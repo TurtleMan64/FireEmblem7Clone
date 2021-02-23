@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 #include "Global.hpp"
 #include "Sprite.hpp"
@@ -59,7 +60,8 @@ bool Map::isPhaseEnemy = true;
 Unit* Map::selectedUnit = nullptr;
 int Map::selectedUnitOriginalTileX = 0;
 int Map::selectedUnitOriginalTileY = 0;
-std::vector<Sprite*> Map::previewBlueTiles;
+std::vector<Sprite*> Map::previewTilesBlue;
+std::vector<Sprite*> Map::previewTilesRed;
 
 Sprite* Map::previewArrowSprite = nullptr;
 
@@ -312,8 +314,8 @@ void Map::playerPhase()
                 selectedUnitOriginalTileX = selectedUnit->tileX;
                 selectedUnitOriginalTileY = selectedUnit->tileY;
                 walkingPath.clear();
-                clearBlueTiles();
-                calculateBlueTiles(selectedUnit);
+                clearPreviewTiles();
+                calculatePreviewTiles(selectedUnit);
                 mapState = MovingUnit;
             }
             else
@@ -368,11 +370,11 @@ void Map::playerPhase()
     {
         updateCursor();
 
-        renderBlueTiles();
+        renderPreviewTiles();
 
         if (Input::pressedB())
         {
-            clearBlueTiles();
+            clearPreviewTiles();
 
             selectedUnit = nullptr;
             resetNeutralHudDescriptions();
@@ -388,7 +390,7 @@ void Map::playerPhase()
                 if (cursorX == selectedUnit->tileX &&
                     cursorY == selectedUnit->tileY)
                 {
-                    clearBlueTiles();
+                    clearPreviewTiles();
                     calculateMenuChoices();
 
                     mapState = UnitMenu;
@@ -398,7 +400,7 @@ void Map::playerPhase()
                     //We also have to check that there isnt another blue unit on this tile already
                     if (getUnitAtTile(cursorX, cursorY, &unitsPlayer) == nullptr)
                     {
-                        clearBlueTiles();
+                        clearPreviewTiles();
 
                         //generate walking path
                         generateWalkingPath(selectedUnit, cursorX, cursorY);
@@ -498,7 +500,7 @@ void Map::playerPhase()
             selectedUnit->tileX = selectedUnitOriginalTileX;
             selectedUnit->tileY = selectedUnitOriginalTileY;
 
-            clearBlueTiles();
+            clearPreviewTiles();
 
             selectedUnit = nullptr;
             resetNeutralHudDescriptions();
@@ -676,6 +678,7 @@ void Map::playerPhase()
     {
         turnChangeTimer--;
 
+        resetNeutralHudDescriptions();
         renderUnits(&unitsEnemy,  6, nullptr);
         renderUnits(&unitsPlayer, 0, nullptr);
 
@@ -793,29 +796,49 @@ void Map::updateCamera()
     viewportPixelY = Util::approach(viewportPixelY, viewportPixelTargetY, CAMERA_SMOOTH_FACTOR);
 }
 
-void Map::clearBlueTiles()
+void Map::clearPreviewTiles()
 {
-    for (int i = 0; i < previewBlueTiles.size(); i++)
+    for (int i = 0; i < previewTilesBlue.size(); i++)
     {
-        delete previewBlueTiles[i];
+        delete previewTilesBlue[i];
     }
-    previewBlueTiles.clear();
+    previewTilesBlue.clear();
+
+    for (int i = 0; i < previewTilesRed.size(); i++)
+    {
+        delete previewTilesRed[i];
+    }
+    previewTilesRed.clear();
 }
 
-void Map::renderBlueTiles()
+void Map::renderPreviewTiles()
 {
-    for (int i = 0; i < previewBlueTiles.size(); i++)
+    for (int i = 0; i < previewTilesBlue.size(); i++)
     {
-        int tileX = previewBlueTiles[i]->x;
-        int tileY = previewBlueTiles[i]->y;
+        int tileX = previewTilesBlue[i]->x;
+        int tileY = previewTilesBlue[i]->y;
         int pixelX = viewportPixelX + tileX*16;
         int pixelY = viewportPixelY + tileY*16;
-        previewBlueTiles[i]->x = pixelX;
-        previewBlueTiles[i]->y = pixelY;
-        previewBlueTiles[i]->imageIndex++;
-        previewBlueTiles[i]->render();
-        previewBlueTiles[i]->x = tileX;
-        previewBlueTiles[i]->y = tileY;
+        previewTilesBlue[i]->x = pixelX;
+        previewTilesBlue[i]->y = pixelY;
+        previewTilesBlue[i]->imageIndex++;
+        previewTilesBlue[i]->render();
+        previewTilesBlue[i]->x = tileX;
+        previewTilesBlue[i]->y = tileY;
+    }
+
+    for (int i = 0; i < previewTilesRed.size(); i++)
+    {
+        int tileX = previewTilesRed[i]->x;
+        int tileY = previewTilesRed[i]->y;
+        int pixelX = viewportPixelX + tileX*16;
+        int pixelY = viewportPixelY + tileY*16;
+        previewTilesRed[i]->x = pixelX;
+        previewTilesRed[i]->y = pixelY;
+        previewTilesRed[i]->imageIndex++;
+        previewTilesRed[i]->render();
+        previewTilesRed[i]->x = tileX;
+        previewTilesRed[i]->y = tileY;
     }
 }
 
@@ -935,7 +958,7 @@ void Map::constructGraph(Unit* unit, int* graph)
     }
 }
 
-void Map::calculateBlueTiles(Unit* unit)
+void Map::calculatePreviewTiles(Unit* unit)
 {
     if (dijkstraGraph == nullptr)
     {
@@ -1017,29 +1040,80 @@ void Map::calculateBlueTiles(Unit* unit)
         count++;
     }
 
+    std::unordered_set<int> tilesAlreadySet;
+
     for (i = 0; i < NUM_NODES; i++)
     {
-        if (i != START_NODE)
+        //printf("Distance of node %d = %d\n", i, distance[i]);
+        if (dijkstraTilesDistance[i] <= unit->mov)
         {
-            //printf("Distance of node %d = %d\n", i, distance[i]);
-            if (dijkstraTilesDistance[i] <= unit->mov)
+            int nodeX = (i % Map::NODES_WIDTH) - (Map::NODES_WIDTH/2);
+            int nodeY = (i / Map::NODES_WIDTH) - (Map::NODES_WIDTH/2);
+
+            int tileX = Map::selectedUnit->tileX + nodeX;
+            int tileY = Map::selectedUnit->tileY + nodeY;
+
+            Map::previewTilesBlue.push_back(new Sprite("res/Images/Sprites/Map/PreviewTileBlue", tileX, tileY, false));
+            tilesAlreadySet.insert(tileX | (tileY << 16));
+        }
+        //printf("Path = %d", i);
+        j = i;
+        do
+        {
+            j = dijkstraTilesPath[j];
+            //printf("<-%d", j);
+        } while(j != START_NODE);
+        //printf("\n");
+    }
+
+    std::unordered_set<int> attackRanges = unit->getAttackRanges();
+
+    for (int t = 0; t < previewTilesBlue.size(); t++)
+    {
+        int baseX = previewTilesBlue[t]->x;
+        int baseY = previewTilesBlue[t]->y;
+
+        Unit* blueAtTile = getUnitAtTile(baseX, baseY, &unitsPlayer);
+        Unit* redAtTile  = getUnitAtTile(baseX, baseY, &unitsEnemy);
+
+        if ((blueAtTile != unit && blueAtTile != nullptr) || redAtTile != nullptr)
+        {
+            continue;
+        }
+
+        for (auto itr = attackRanges.begin(); itr != attackRanges.end(); ++itr)
+        {
+            int range = *itr;
+            for (int y = -range; y <= range; y++)
             {
-                int nodeX = (i % Map::NODES_WIDTH) - (Map::NODES_WIDTH/2);
-                int nodeY = (i / Map::NODES_WIDTH) - (Map::NODES_WIDTH/2);
+                for (int x = -range; x <= range; x++)
+                {
+                    if (abs(y) + abs(x) == range)
+                    {
+                        int globalX = baseX + x;
+                        int globalY = baseY + y;
 
-                int tileX = Map::selectedUnit->tileX + nodeX;
-                int tileY = Map::selectedUnit->tileY + nodeY;
+                        if (globalX < 0 || globalX >= tilesWidth ||
+                            globalY < 0 || globalY >= tilesHeight)
+                        {
+                            continue;
+                        }
 
-                Map::previewBlueTiles.push_back(new Sprite("res/Images/Sprites/Map/PreviewTileBlue", tileX, tileY, false));
+                        auto contains = tilesAlreadySet.find(globalX | (globalY << 16));
+                        if (contains != tilesAlreadySet.end())
+                        {
+                            continue;
+                        }
+
+                        MapTile tile = tiles[globalX + tilesWidth*globalY];
+                        if (tile.type != NoPass)
+                        {
+                            Map::previewTilesRed.push_back(new Sprite("res/Images/Sprites/Map/PreviewTileRed", globalX, globalY, false));
+                            tilesAlreadySet.insert(globalX | (globalY << 16));
+                        }
+                    }
+                }
             }
-            //printf("Path = %d", i);
-            j = i;
-            do
-            {
-                j = dijkstraTilesPath[j];
-                //printf("<-%d", j);
-            } while(j != START_NODE);
-            //printf("\n");
         }
     }
 

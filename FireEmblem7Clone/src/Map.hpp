@@ -94,7 +94,8 @@ public:
     static Unit* selectedUnit;
     static int selectedUnitOriginalTileX;
     static int selectedUnitOriginalTileY;
-    static std::vector<Sprite*> previewBlueTiles;
+    static std::vector<Sprite*> previewTilesBlue;
+    static std::vector<Sprite*> previewTilesRed;
 
     static Sprite* previewArrowSprite;
     static void renderPreviewArrows();
@@ -120,8 +121,8 @@ public:
     static void resetNeutralHudDescriptions();
 
     static bool unitCanMoveToTile(Unit* unit, int tileX, int tileY);
-    static void clearBlueTiles();
-    static void renderBlueTiles();
+    static void clearPreviewTiles();
+    static void renderPreviewTiles();
 
     static Unit* getUnitAtTile(int tileX, int tileY, std::vector<Unit*>* units);
 
@@ -136,7 +137,7 @@ public:
     static int* dijkstraTilesDistance; //Distance from unit to each tile
     static int* dijkstraTilesPath;     //Path from a tile to previous tile on optimal path
     static void constructGraph(Unit* unit, int* graph);
-    static void calculateBlueTiles(Unit* unit);
+    static void calculatePreviewTiles(Unit* unit);
 
     static void updateCursor();
     static void updateCamera();
