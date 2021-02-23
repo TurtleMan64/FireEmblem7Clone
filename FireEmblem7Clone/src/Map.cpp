@@ -24,6 +24,8 @@ int Map::tilesHeight = 16;
 std::vector<Unit*> Map::unitsPlayer;
 std::vector<Unit*> Map::unitsEnemy;
 
+MapState Map::mapState = Neutral;
+
 int Map::viewportX = 0;
 int Map::viewportY = 0;
 int Map::viewportPixelX = 0;
@@ -264,7 +266,6 @@ void Map::step()
     rect.h = tilesHeight*16;
     SDL_RenderCopy(Global::sdlRenderer, background, nullptr, &rect);
 
-    //Player phase logic
     if (isPhasePlayer)
     {
         playerPhase();
@@ -277,10 +278,66 @@ void Map::step()
 
 void Map::playerPhase()
 {
-    updateCursor();
-
-    if ((hasTemporarilyWalked || hasSelectedBlankTile) && turnChangeTimer == 0 && !isViewingItems)
+    switch (mapState)
     {
+    case Neutral:
+    {
+        updateCursor();
+        Unit* useableUnitOnCursor = getUnitAtTile(cursorX, cursorY, &unitsPlayer);
+        if (useableUnitOnCursor != nullptr)
+        {
+            if (useableUnitOnCursor->isUsed)
+            {
+                useableUnitOnCursor = nullptr;
+            }
+        }
+
+        renderUnits(&unitsEnemy,  6, nullptr);
+        renderUnits(&unitsPlayer, 0, useableUnitOnCursor);
+        if (useableUnitOnCursor != nullptr)
+        {
+            useableUnitOnCursor->render(useableUnitOnCursor->tileX*16, useableUnitOnCursor->tileY*16, 1, viewportPixelX, viewportPixelY);
+        }
+
+        renderCursor();
+        renderTileDescription();
+        renderObjective();
+        renderUnitDecription();
+
+        if (Input::pressedA())
+        {
+            if (useableUnitOnCursor != nullptr)
+            {
+                selectedUnit = useableUnitOnCursor;
+                selectedUnitOriginalTileX = selectedUnit->tileX;
+                selectedUnitOriginalTileY = selectedUnit->tileY;
+                walkingPath.clear();
+                clearBlueTiles();
+                calculateBlueTiles(selectedUnit);
+                mapState = MovingUnit;
+            }
+            else
+            {
+                menuChoices.clear();
+                menuIdx = 0;
+                menuChoices.push_back("Unit");
+                menuChoices.push_back("Status");
+                menuChoices.push_back("Options");
+                menuChoices.push_back("Suspend");
+                menuChoices.push_back("End");
+                mapState = NeutralMenu;
+            }
+        }
+
+        break;
+    }
+
+    case NeutralMenu:
+    {
+        renderUnits(&unitsEnemy,  6, nullptr);
+        renderUnits(&unitsPlayer, 0, nullptr);
+        renderMainMenu();
+
         if (Input::pressedUp())
         {
             menuIdx--;
@@ -293,213 +350,50 @@ void Map::playerPhase()
         {
             menuIdx = (menuIdx + 1) % menuChoices.size();
         }
+
+        if (Input::pressedA())
+        {
+            executeMenuChoice();
+        }
+        else if (Input::pressedB())
+        {
+            resetNeutralHudDescriptions();
+            mapState = Neutral;
+        }
+
+        break;
     }
 
-    if (isViewingItems)
+    case MovingUnit:
     {
-        if (selectedUnit->items.size() == 0)
+        updateCursor();
+
+        renderBlueTiles();
+
+        if (Input::pressedB())
         {
-            isViewingItems = false;
-            itemEditChoices.clear();
-            calculateMenuChoices();
+            clearBlueTiles();
+
+            selectedUnit = nullptr;
+            resetNeutralHudDescriptions();
+            mapState = Neutral;
         }
-        else
+        else if (unitCanMoveToTile(selectedUnit, cursorX, cursorY))
         {
-            if (itemEditChoices.size() > 0)
+            renderPreviewArrows();
+
+            if (Input::pressedA())
             {
-                if (Input::pressedUp())
+                //If we're already there, skip the walking animation
+                if (cursorX == selectedUnit->tileX &&
+                    cursorY == selectedUnit->tileY)
                 {
-                    itemEditIdx--;
-                    if (itemEditIdx < 0)
-                    {
-                        itemEditIdx = (int)itemEditChoices.size() - 1;
-                    }
-                }
-                else if (Input::pressedDown())
-                {
-                    itemEditIdx = (itemEditIdx + 1) % itemEditChoices.size();
-                }
-            }
-            else
-            {
-                if (Input::pressedUp())
-                {
-                    itemIdx--;
-                    if (itemIdx < 0)
-                    {
-                        itemIdx = (int)selectedUnit->items.size() - 1;
-                    }
-                }
-                else if (Input::pressedDown())
-                {
-                    itemIdx = (itemIdx + 1) % selectedUnit->items.size();
-                }
-            }
-        }
-    }
-
-    if (walkingTimer > 0)
-    {
-        if (walkingTimer == 1)
-        {
-            hasTemporarilyWalked = true;
-            selectedUnit->tileX = cursorX;
-            selectedUnit->tileY = cursorY;
-            calculateMenuChoices();
-        }
-        walkingTimer--;
-    }
-
-    if (Input::pressedB() && walkingTimer == 0 && turnChangeTimer == 0)
-    {
-        if (isViewingItems)
-        {
-            if (itemEditChoices.size() > 0)
-            {
-                itemEditChoices.clear();
-            }
-            else
-            {
-                isViewingItems = false;
-                calculateMenuChoices();
-            }
-        }
-        else
-        {
-            if (selectedUnit != nullptr)
-            {
-                selectedUnit->tileX = selectedUnitOriginalTileX;
-                selectedUnit->tileY = selectedUnitOriginalTileY;
-
-                clearBlueTiles();
-
-                selectedUnit = nullptr;
-                hasTemporarilyWalked = false;
-            }
-
-            if (hasSelectedBlankTile)
-            {
-                hasSelectedBlankTile = false;
-                menuIdx = 0;
-                menuChoices.clear();
-            }
-        }
-    }
-        
-    if (Input::pressedA() && walkingTimer == 0 && turnChangeTimer == 0)
-    {
-        if (isViewingItems)
-        {
-            if (itemEditChoices.size() == 0)
-            {
-                if (selectedUnit->items[itemIdx].isWeapon())
-                {
-                    itemEditChoices.push_back("Equip");
-                }
-
-                if (selectedUnit->items[itemIdx].isConsumableByUnit(selectedUnit))
-                {
-                    itemEditChoices.push_back("Use");
-                }
-
-                itemEditChoices.push_back("Discard");
-            }
-            else
-            {
-                if (itemEditChoices[itemEditIdx] == "Equip")
-                {
-                    //swap
-                    Item itemAt0 = selectedUnit->items[0];
-                    Item itemAtIdx = selectedUnit->items[itemIdx];
-
-                    selectedUnit->items[0] = itemAtIdx;
-                    selectedUnit->items[itemIdx] = itemAt0;
-
-                    itemIdx = 0;
-                    itemEditIdx = 0;
-                    itemEditChoices.clear();
-                }
-                else if (itemEditChoices[itemEditIdx] == "Discard")
-                {
-                    selectedUnit->items.erase(selectedUnit->items.begin() + itemIdx);
-
-                    itemEditIdx = 0;
-                    itemEditChoices.clear();
-                    isViewingItems = false;
+                    clearBlueTiles();
                     calculateMenuChoices();
-                }
-                else if (itemEditChoices[itemEditIdx] == "Use")
-                {
-                    selectedUnit->items[itemIdx].consume(selectedUnit);
-                    selectedUnit->items[itemIdx].usesRemaining--;
 
-                    if (selectedUnit->items[itemIdx].usesRemaining == 0)
-                    {
-                        selectedUnit->items.erase(selectedUnit->items.begin() + itemIdx);
-                    }
-
-                    hasTemporarilyWalked = false;
-                    //menuChoices.clear();
-                    isViewingItems = false;
-                    selectedUnit->isUsed = true;
-                    selectedUnit = nullptr;
+                    mapState = UnitMenu;
                 }
-            }
-        }
-        else
-        {
-            if (hasSelectedBlankTile)
-            {
-                executeMenuChoice();
-            }
-            else if (selectedUnit == nullptr)
-            {
-                //Are we clicking on a blue unit?
-                bool clickedOnABlueUnit = false;
-                for (int i = 0; i < unitsPlayer.size(); i++)
-                {
-                    if (unitsPlayer[i]->tileX == cursorX &&
-                        unitsPlayer[i]->tileY == cursorY &&
-                        unitsPlayer[i]->isUsed == false)
-                    {
-                        selectedUnit = unitsPlayer[i];
-                        selectedUnitOriginalTileX = selectedUnit->tileX;
-                        selectedUnitOriginalTileY = selectedUnit->tileY;
-                        walkingPath.clear();
-                        clearBlueTiles();
-                        calculateBlueTiles(selectedUnit);
-                        hasTemporarilyWalked = false;
-                        clickedOnABlueUnit = true;
-                        break;
-                    }
-                }
-
-                if (!clickedOnABlueUnit)
-                {
-                    hasSelectedBlankTile = true;
-                    menuChoices.clear();
-                    menuIdx = 0;
-                    menuChoices.push_back("Unit");
-                    menuChoices.push_back("Status");
-                    menuChoices.push_back("Options");
-                    menuChoices.push_back("Suspend");
-                    menuChoices.push_back("End");
-                }
-            }
-            else //We have a unit already selected, can we move them to the tile?
-            {
-                if (hasTemporarilyWalked)
-                {
-                    executeMenuChoice();
-                }
-                else if (cursorX == selectedUnit->tileX &&
-                         cursorY == selectedUnit->tileY)
-                {
-                    //skip the walking animation since we are already there.
-                    hasTemporarilyWalked = true;
-                    calculateMenuChoices();
-                }
-                else if (tileIsBlue(selectedUnit, cursorX, cursorY))
+                else
                 {
                     //We also have to check that there isnt another blue unit on this tile already
                     if (getUnitAtTile(cursorX, cursorY, &unitsPlayer) == nullptr)
@@ -511,13 +405,21 @@ void Map::playerPhase()
 
                         //start walking
                         walkingTimer = (int)walkingPath.size()*8 - 9; //8 frames per tile
+
+                        mapState = WaitingForUnitToMove;
                     }
                 }
             }
         }
+
+        renderUnits(&unitsEnemy,  6, nullptr);
+        renderUnits(&unitsPlayer, 0, nullptr);
+
+        renderCursor();
+        break;
     }
 
-    if (walkingTimer > 0)
+    case WaitingForUnitToMove:
     {
         int id1 = (walkingTimer)/8;
         int id2 = id1 + 1;
@@ -533,145 +435,251 @@ void Map::playerPhase()
         int direction = 0;
         if (p2.y > p1.y)
         {
-            direction = 1;
+            direction = 2;
         }
         else if (p2.y < p1.y)
         {
-            direction = 2;
+            direction = 3;
         }
         else if (p2.x > p1.x)
         {
-            direction = 3;
+            direction = 4;
         }
         else if (p2.x < p1.x)
         {
-            direction = 4;
+            direction = 5;
         }
+
+        renderUnits(&unitsEnemy,  6, nullptr);
 
         selectedUnit->x = (int)(tweenX*16);
         selectedUnit->y = (int)(tweenY*16);
         selectedUnit->spriteIndex = direction;
-    }
 
-    //Render the blue preview tiles
-    if (selectedUnit != nullptr && walkingTimer == 0 && !hasTemporarilyWalked && !hasSelectedBlankTile)
-    {
-        for (int i = 0; i < previewBlueTiles.size(); i++)
-        {
-            int tileX = previewBlueTiles[i]->x;
-            int tileY = previewBlueTiles[i]->y;
-            int pixelX = viewportPixelX + tileX*16;
-            int pixelY = viewportPixelY + tileY*16;
-            previewBlueTiles[i]->x = pixelX;
-            previewBlueTiles[i]->y = pixelY;
-            previewBlueTiles[i]->imageIndex++;
-            previewBlueTiles[i]->render();
-            previewBlueTiles[i]->x = tileX;
-            previewBlueTiles[i]->y = tileY;
-        }
-
-        if (tileIsBlue(selectedUnit, cursorX, cursorY))
-        {
-            //Generate walking path, render triangles.
-            renderPreviewArrows();
-        }
-    }
-
-    //Render the red units
-    for (int i = 0; i < unitsEnemy.size(); i++)
-    {
-        unitsEnemy[i]->render(unitsEnemy[i]->tileX*16, unitsEnemy[i]->tileY*16, 5, viewportPixelX, viewportPixelY);
-    }
-
-    //Render all of the blue units
-    for (int i = 0; i < unitsPlayer.size(); i++)
-    {
-        if (unitsPlayer[i] == selectedUnit && walkingTimer > 0)
-        {
-            
-        }
-        else
-        {
-            unitsPlayer[i]->render(unitsPlayer[i]->tileX*16, unitsPlayer[i]->tileY*16, 0, viewportPixelX, viewportPixelY);
-        }
-    }
-
-    if (selectedUnit != nullptr && walkingTimer > 0)
-    {
+        renderUnits(&unitsPlayer,  0, selectedUnit);
         selectedUnit->render(selectedUnit->x, selectedUnit->y, selectedUnit->spriteIndex, viewportPixelX, viewportPixelY);
-    }
 
-    //Render the cursor
-    if (!hasTemporarilyWalked && !hasSelectedBlankTile && turnChangeTimer == 0 && !isViewingItems)
-    {
-        cursor->x = viewportPixelX + cursorX*16;
-        cursor->y = viewportPixelY + cursorY*16;
-        cursor->imageIndex++;
-        cursor->render();
-    }
-
-    //Render the hud
-    if (selectedUnit == nullptr && !hasSelectedBlankTile && turnChangeTimer == 0 && !isViewingItems)
-    {
-        renderObjective();
-        renderUnitDecription();
-        renderTileDescription();
-    }
-
-    //Draw options box
-    if ((hasTemporarilyWalked || hasSelectedBlankTile) && !isViewingItems)
-    {
-        int windowBoxX = 16;
-        if ((cursorX - viewportX) < 7)
+        walkingTimer--;
+        if (walkingTimer <= 0)
         {
-            windowBoxX = 11*16;
+            selectedUnit->tileX = cursorX;
+            selectedUnit->tileY = cursorY;
+            calculateMenuChoices();
+            mapState = UnitMenu;
         }
-        WindowBox::render(3, (int)menuChoices.size() + 1, windowBoxX, 16);
-        menuCursor->imageIndex++;
-        menuCursor->y = 16 + menuIdx*16;
-        menuCursor->x = windowBoxX - 28;
-        menuCursor->render();
-
-        for (int i = 0; i < menuChoices.size(); i++)
-        {
-            Text::renderText(menuChoices[i], Font::White, {255, 255, 255, 255}, windowBoxX + 6, 24 + i*16, false, 0, 0);
-        }
+        break;
     }
 
-    //Draw the item view box
-    if (isViewingItems)
+    case UnitMenu:
     {
-        renderItemWindow();
+        renderUnits(&unitsEnemy,  6, nullptr);
+        renderUnits(&unitsPlayer, 0, nullptr);
+        renderMainMenu();
 
-        selectedUnit->sprMugshot->x = 8*16;
-        selectedUnit->sprMugshot->y = 16;
-        selectedUnit->sprMugshot->imageIndex++;
-        selectedUnit->sprMugshot->render();
-
-        WindowBox::render(6, 3, 8*16, 6*16);
-
-        Text::renderText("Affi", Font::White, {255, 255, 255, 255}, 10*16,     6*16 + 3, false, 0, 0);
-        Text::renderText("Atk",  Font::White, {255, 255, 255, 255},  8*16 + 6, 7*16,     false, 0, 0);
-        Text::renderText("Crit", Font::White, {255, 255, 255, 255}, 11*16    , 7*16,     false, 0, 0);
-        Text::renderText("Hit",  Font::White, {255, 255, 255, 255},  8*16 + 6, 8*16 - 2, false, 0, 0);
-        Text::renderText("Avd",  Font::White, {255, 255, 255, 255}, 11*16    , 8*16 - 2, false, 0, 0);
-
-        Text::renderText("1",   Font::White, {198, 255, 255, 255},  8*16 + 6 + 17, 7*16,     false, 0, 3);
-        Text::renderText("12",  Font::White, {198, 255, 255, 255}, 11*16     + 19, 7*16,     false, 0, 3);
-        Text::renderText("123", Font::White, {198, 255, 255, 255},  8*16 + 6 + 17, 8*16 - 2, false, 0, 3);
-        Text::renderText("123", Font::White, {198, 255, 255, 255}, 11*16     + 19, 8*16 - 2, false, 0, 3);
-
-        if (itemEditChoices.size() > 0)
+        if (Input::pressedUp())
         {
-            renderItemEditWindow();
+            menuIdx--;
+            if (menuIdx < 0)
+            {
+                menuIdx = (int)menuChoices.size() - 1;
+            }
         }
+        else if (Input::pressedDown())
+        {
+            menuIdx = (menuIdx + 1) % menuChoices.size();
+        }
+
+        if (Input::pressedA())
+        {
+            executeMenuChoice();
+        }
+        else if (Input::pressedB())
+        {
+            selectedUnit->tileX = selectedUnitOriginalTileX;
+            selectedUnit->tileY = selectedUnitOriginalTileY;
+
+            clearBlueTiles();
+
+            selectedUnit = nullptr;
+            resetNeutralHudDescriptions();
+            mapState = Neutral;
+        }
+
+        break;
     }
 
-    if (turnChangeTimer > 0)
+    case UnitMenuItem:
+    {
+        renderUnits(&unitsEnemy,  6, nullptr);
+        renderUnits(&unitsPlayer, 0, nullptr);
+
+        renderItemWindow(selectedUnit, 16, 16);
+        renderHandCursor(16, 16, itemIdx);
+        renderItemWeaponStatsWindow();
+
+        if (Input::pressedUp())
+        {
+            itemIdx--;
+            if (itemIdx < 0)
+            {
+                itemIdx = (int)selectedUnit->items.size() - 1;
+            }
+        }
+        else if (Input::pressedDown())
+        {
+            itemIdx = (itemIdx + 1) % selectedUnit->items.size();
+        }
+
+        if (Input::pressedA())
+        {
+            itemEditIdx = 0;
+            itemEditChoices.clear();
+
+            if (selectedUnit->items[itemIdx].isWeapon())
+            {
+                itemEditChoices.push_back("Equip");
+            }
+
+            if (selectedUnit->items[itemIdx].isConsumableByUnit(selectedUnit))
+            {
+                itemEditChoices.push_back("Use");
+            }
+
+            itemEditChoices.push_back("Discard");
+
+            mapState = UnitMenuItemAction;
+        }
+        else if (Input::pressedB())
+        {
+            calculateMenuChoices();
+            mapState = UnitMenu;
+        }
+
+        break;
+    }
+
+    case UnitMenuItemAction:
+    {
+        renderUnits(&unitsEnemy,  6, nullptr);
+        renderUnits(&unitsPlayer, 0, nullptr);
+
+        renderItemWindow(selectedUnit, 16, 16);
+        renderItemWeaponStatsWindow();
+        renderItemEditWindow();
+
+        if (Input::pressedUp())
+        {
+            itemEditIdx--;
+            if (itemEditIdx < 0)
+            {
+                itemEditIdx = (int)itemEditChoices.size() - 1;
+            }
+        }
+        else if (Input::pressedDown())
+        {
+            itemEditIdx = (itemEditIdx + 1) % itemEditChoices.size();
+        }
+
+        if (selectedUnit->items.size() == 0)
+        {
+            itemEditChoices.clear();
+            mapState = UnitMenuItem;
+        }
+
+        if (Input::pressedA())
+        {
+            if (itemEditChoices[itemEditIdx] == "Equip")
+            {
+                Item itemAt0 = selectedUnit->items[0];
+                Item itemAtIdx = selectedUnit->items[itemIdx];
+
+                selectedUnit->items[0] = itemAtIdx;
+                selectedUnit->items[itemIdx] = itemAt0;
+
+                itemIdx = 0;
+                itemEditIdx = 0;
+                itemEditChoices.clear();
+
+                mapState = UnitMenuItem;
+            }
+            else if (itemEditChoices[itemEditIdx] == "Discard")
+            {
+                selectedUnit->items.erase(selectedUnit->items.begin() + itemIdx);
+
+                itemIdx = 0;
+                itemEditIdx = 0;
+                itemEditChoices.clear();
+
+                mapState = UnitMenuItem;
+
+                if (selectedUnit->items.size() == 0)
+                {
+                    calculateMenuChoices();
+                    mapState = UnitMenu;
+                }
+            }
+            else if (itemEditChoices[itemEditIdx] == "Use")
+            {
+                selectedUnit->items[itemIdx].consume(selectedUnit);
+                selectedUnit->items[itemIdx].usesRemaining--;
+
+                if (selectedUnit->items[itemIdx].usesRemaining == 0)
+                {
+                    selectedUnit->items.erase(selectedUnit->items.begin() + itemIdx);
+                }
+
+                selectedUnit->isUsed = true;
+                selectedUnit = nullptr;
+
+                resetNeutralHudDescriptions();
+                mapState = Neutral;
+            }
+        }
+        else if (Input::pressedB())
+        {
+            mapState = UnitMenuItem;
+        }
+
+        break;
+    }
+
+    case UnitMenuAttack:
+    {
+        break;
+    }
+
+    case UnitMenuAttackSelectWeapon:
+    {
+        break;
+    }
+
+    case UnitMenuAttackSelectTarget:
+    {
+        updateCursor();
+        renderCursor();
+        break;
+    }
+
+    case UnitMenuTradeSelectTarget:
+    {
+        updateCursor();
+        renderCursor();
+        break;
+    }
+
+    case UnitMenuTrading:
+    {
+        break;
+    }
+
+    case PlayerPhaseEnding:
     {
         turnChangeTimer--;
 
-        if (turnChangeTimer == 0)
+        renderUnits(&unitsEnemy,  6, nullptr);
+        renderUnits(&unitsPlayer, 0, nullptr);
+
+        if (turnChangeTimer <= 0)
         {
             isPhaseEnemy  = true;
             isPhasePlayer = false;
@@ -680,12 +688,24 @@ void Map::playerPhase()
             {
                 unitsPlayer[i]->isUsed = false;
             }
+
+            mapState = EnemyPhaseEnding;
+            turnChangeTimer = TURN_CHANGE_TIMER_MAX;
         }
         else
         {
             renderTurnChange(1);
         }
+        break;
     }
+
+    default:
+    {
+        break;
+    }
+    }
+
+    updateCamera();
 }
 
 void Map::enemyPhase()
@@ -699,7 +719,7 @@ void Map::enemyPhase()
     //Render the red units
     for (int i = 0; i < unitsEnemy.size(); i++)
     {
-        unitsEnemy[i]->render(unitsEnemy[i]->tileX*16, unitsEnemy[i]->tileY*16, 5, viewportPixelX, viewportPixelY);
+        unitsEnemy[i]->render(unitsEnemy[i]->tileX*16, unitsEnemy[i]->tileY*16, 6, viewportPixelX, viewportPixelY);
     }
 
     if (turnChangeTimer == 0)
@@ -714,6 +734,7 @@ void Map::enemyPhase()
         {
             isPhaseEnemy  = false;
             isPhasePlayer = true;
+            mapState = Neutral;
         }
         else
         {
@@ -724,24 +745,21 @@ void Map::enemyPhase()
 
 void Map::updateCursor()
 {
-    if (isPhasePlayer && walkingTimer == 0 && !hasTemporarilyWalked && !hasSelectedBlankTile && turnChangeTimer == 0)
+    if (Input::pressedUp() && cursorY > 0)
     {
-        if (Input::pressedUp() && cursorY > 0)
-        {
-            cursorY--;
-        }
-        if (Input::pressedDown() && cursorY < tilesHeight - 1)
-        {
-            cursorY++;
-        }
-        if (Input::pressedLeft() && cursorX > 0)
-        {
-            cursorX--;
-        }
-        if (Input::pressedRight() && cursorX < tilesWidth - 1)
-        {
-            cursorX++;
-        }
+        cursorY--;
+    }
+    if (Input::pressedDown() && cursorY < tilesHeight - 1)
+    {
+        cursorY++;
+    }
+    if (Input::pressedLeft() && cursorX > 0)
+    {
+        cursorX--;
+    }
+    if (Input::pressedRight() && cursorX < tilesWidth - 1)
+    {
+        cursorX++;
     }
 }
 
@@ -784,6 +802,23 @@ void Map::clearBlueTiles()
     previewBlueTiles.clear();
 }
 
+void Map::renderBlueTiles()
+{
+    for (int i = 0; i < previewBlueTiles.size(); i++)
+    {
+        int tileX = previewBlueTiles[i]->x;
+        int tileY = previewBlueTiles[i]->y;
+        int pixelX = viewportPixelX + tileX*16;
+        int pixelY = viewportPixelY + tileY*16;
+        previewBlueTiles[i]->x = pixelX;
+        previewBlueTiles[i]->y = pixelY;
+        previewBlueTiles[i]->imageIndex++;
+        previewBlueTiles[i]->render();
+        previewBlueTiles[i]->x = tileX;
+        previewBlueTiles[i]->y = tileY;
+    }
+}
+
 void Map::generateWalkingPath(Unit* unit, int tileX, int tileY)
 {
     walkingPath.clear();
@@ -810,7 +845,7 @@ void Map::generateWalkingPath(Unit* unit, int tileX, int tileY)
     } while(currentNode != NUM_NODES/2);
 }
 
-bool Map::tileIsBlue(Unit* unit, int tileX, int tileY)
+bool Map::unitCanMoveToTile(Unit* unit, int tileX, int tileY)
 {
     if (unit->tileX == tileX && unit->tileY == tileY)
     {
@@ -1218,7 +1253,7 @@ void Map::executeMenuChoice()
     else if (menuChoices[menuIdx] == "End")
     {
         turnChangeTimer = TURN_CHANGE_TIMER_MAX;
-        hasSelectedBlankTile = false;
+        mapState = PlayerPhaseEnding;
     }
     else if (menuChoices[menuIdx] == "Attack")
     {
@@ -1231,8 +1266,7 @@ void Map::executeMenuChoice()
     else if (menuChoices[menuIdx] == "Item")
     {
         itemIdx = 0;
-        isViewingItems = true;
-
+        mapState = UnitMenuItem;
         menuIdx = 0;
         menuChoices.clear();
         return;
@@ -1243,13 +1277,41 @@ void Map::executeMenuChoice()
     }
     else if (menuChoices[menuIdx] == "Wait")
     {
-        hasTemporarilyWalked = false;
         selectedUnit->isUsed = true;
         selectedUnit = nullptr;
+        resetNeutralHudDescriptions();
+        mapState = Neutral;
+        menuIdx = 0;
+        menuChoices.clear();
+        return;
     }
 
     menuIdx = 0;
     menuChoices.clear();
+}
+
+void Map::renderMainMenu()
+{
+    int windowBoxX = 16;
+    if ((cursorX - viewportX) < 7)
+    {
+        windowBoxX = 11*16;
+    }
+    WindowBox::render(3, (int)menuChoices.size() + 1, windowBoxX, 16);
+    renderHandCursor(windowBoxX, 16, menuIdx);
+
+    for (int i = 0; i < menuChoices.size(); i++)
+    {
+        Text::renderText(menuChoices[i], Font::White, {255, 255, 255, 255}, windowBoxX + 6, 24 + i*16, false, 0, 0);
+    }
+}
+
+void Map::renderHandCursor(int windowX, int windowY, int idx)
+{
+    menuCursor->imageIndex++;
+    menuCursor->x = windowX - 28;
+    menuCursor->y = windowY + idx*16;
+    menuCursor->render();
 }
 
 void Map::renderObjective()
@@ -1420,6 +1482,13 @@ void Map::renderUnitDecription()
     }
 }
 
+void Map::resetNeutralHudDescriptions()
+{
+    hudUnitDescriptorY = -48;
+    hudTileDescriptorX = -48;
+    hudObjectiveY = -48;
+}
+
 void Map::renderTurnChange(int imageIndex)
 {
     float diff = (turnChangeTimer - (TURN_CHANGE_TIMER_MAX/2))/(0.5f*TURN_CHANGE_TIMER_MAX);
@@ -1434,28 +1503,38 @@ void Map::renderTurnChange(int imageIndex)
     turnChangeSprite->render({255, 255, 255, (Uint8)(255*tOpp)});
 }
 
-void Map::renderItemWindow()
+void Map::renderItemWindow(Unit* unit, int originX, int originY)
 {
-    const int ORIGIN_X = 16;
-    const int ORIGIN_Y = 16;
+    WindowBox::render(7, (int)unit->items.size() + 1, originX, originY);
 
-    WindowBox::render(7, (int)selectedUnit->items.size() + 1, ORIGIN_X, ORIGIN_Y);
-
-    if (itemEditChoices.size() == 0)
+    for (int i = 0; i < unit->items.size(); i++)
     {
-        menuCursor->imageIndex++;
-        menuCursor->y = ORIGIN_X + itemIdx*16;
-        menuCursor->x = ORIGIN_Y - 28;
-        menuCursor->render();
+        Item item = unit->items[i];
+        item.render(originX + 6, originY + 8 + i*16);
+        Text::renderText(item.getName(), Font::White, {255, 255, 255, 255}, originX + 16 + 7, originY + 8 + i*16, false, 0, 0);
+        Text::renderText(std::to_string(item.usesRemaining), Font::White, {198, 255, 255, 255}, originX + 6*16 - 8, originY + 8 + i*16, false, 0, 2);
     }
+}
 
-    for (int i = 0; i < selectedUnit->items.size(); i++)
-    {
-        Item item = selectedUnit->items[i];
-        item.render(ORIGIN_X + 6, ORIGIN_Y + 8 + i*16);
-        Text::renderText(item.getName(), Font::White, {255, 255, 255, 255}, ORIGIN_X + 16 + 7, ORIGIN_Y + 8 + i*16, false, 0, 0);
-        Text::renderText(std::to_string(item.usesRemaining), Font::White, {198, 255, 255, 255}, ORIGIN_X + 6*16 - 8, ORIGIN_Y + 8 + i*16, false, 0, 2);
-    }
+void Map::renderItemWeaponStatsWindow()
+{
+    selectedUnit->sprMugshot->x = 8*16;
+    selectedUnit->sprMugshot->y = 16;
+    selectedUnit->sprMugshot->imageIndex++;
+    selectedUnit->sprMugshot->render();
+
+    WindowBox::render(6, 3, 8*16, 6*16);
+
+    Text::renderText("Affi", Font::White, {255, 255, 255, 255}, 10*16,     6*16 + 3, false, 0, 0);
+    Text::renderText("Atk",  Font::White, {255, 255, 255, 255},  8*16 + 6, 7*16,     false, 0, 0);
+    Text::renderText("Crit", Font::White, {255, 255, 255, 255}, 11*16    , 7*16,     false, 0, 0);
+    Text::renderText("Hit",  Font::White, {255, 255, 255, 255},  8*16 + 6, 8*16 - 2, false, 0, 0);
+    Text::renderText("Avd",  Font::White, {255, 255, 255, 255}, 11*16    , 8*16 - 2, false, 0, 0);
+
+    Text::renderText("1",   Font::White, {198, 255, 255, 255},  8*16 + 6 + 17, 7*16,     false, 0, 3);
+    Text::renderText("12",  Font::White, {198, 255, 255, 255}, 11*16     + 19, 7*16,     false, 0, 3);
+    Text::renderText("123", Font::White, {198, 255, 255, 255},  8*16 + 6 + 17, 8*16 - 2, false, 0, 3);
+    Text::renderText("123", Font::White, {198, 255, 255, 255}, 11*16     + 19, 8*16 - 2, false, 0, 3);
 }
 
 void Map::renderItemEditWindow()
@@ -1473,4 +1552,24 @@ void Map::renderItemEditWindow()
     {
         Text::renderText(itemEditChoices[i], Font::White, {255, 255, 255, 255}, ORIGIN_X + 8, ORIGIN_Y + 8 + i*16, false, 0, 0);
     }
+}
+
+void Map::renderUnits(std::vector<Unit*>* units, int spriteIndex, Unit* ignoreMe)
+{
+    for (int i = 0; i < units->size(); i++)
+    {
+        Unit* unit = units->at(i);
+        if (unit != ignoreMe)
+        {
+            unit->render(unit->tileX*16, unit->tileY*16, spriteIndex, viewportPixelX, viewportPixelY);
+        }
+    }
+}
+
+void Map::renderCursor()
+{
+    cursor->x = viewportPixelX + cursorX*16;
+    cursor->y = viewportPixelY + cursorY*16;
+    cursor->imageIndex++;
+    cursor->render();
 }

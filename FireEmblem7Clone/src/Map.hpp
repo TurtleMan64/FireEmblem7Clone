@@ -17,10 +17,30 @@ enum MapObjective
     Protect
 };
 
+enum MapState
+{
+    Neutral,
+    NeutralMenu,
+    MovingUnit,
+    WaitingForUnitToMove,
+    UnitMenu,
+    UnitMenuItem,
+    UnitMenuItemAction,
+    UnitMenuAttack,
+    UnitMenuAttackSelectWeapon,
+    UnitMenuAttackSelectTarget,
+    UnitMenuTradeSelectTarget,
+    UnitMenuTrading,
+    PlayerPhaseEnding,
+    EnemyPhaseEnding
+};
+
 class Map
 {
 public:
     static SDL_Texture* background;
+
+    static MapState mapState;
 
     static int viewportX;
     static int viewportY;
@@ -36,9 +56,12 @@ public:
     static std::vector<Unit*> unitsPlayer;
     static std::vector<Unit*> unitsEnemy;
 
+    static void renderUnits(std::vector<Unit*>* units, int spriteIndex, Unit* ignoreMe);
+
     static Sprite* cursor;
     static int cursorX;
     static int cursorY;
+    static void renderCursor();
 
     static int walkingTimer; //When this is > 0, we are waiting for walking animtation to play out.
     static std::vector<SDL_Point> walkingPath; //The tiles that you walk through
@@ -51,9 +74,14 @@ public:
     static void calculateMenuChoices();
     static void executeMenuChoice();
 
+    static void renderMainMenu();
+    static void renderHandCursor(int windowX, int windowY, int idx);
+
     static bool isViewingItems;
     static int itemIdx;
-    static void renderItemWindow();
+    static void renderItemWindow(Unit* unit, int x, int y);
+
+    static void renderItemWeaponStatsWindow();
 
     static int itemEditIdx;
     static std::vector<std::string> itemEditChoices;
@@ -89,8 +117,11 @@ public:
     static Sprite* hudHpBar;
     static void renderUnitDecription();
 
-    static bool tileIsBlue(Unit* unit, int tileX, int tileY);
+    static void resetNeutralHudDescriptions();
+
+    static bool unitCanMoveToTile(Unit* unit, int tileX, int tileY);
     static void clearBlueTiles();
+    static void renderBlueTiles();
 
     static Unit* getUnitAtTile(int tileX, int tileY, std::vector<Unit*>* units);
 

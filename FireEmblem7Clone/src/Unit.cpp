@@ -66,15 +66,15 @@ Unit::Unit(std::string displayName, std::string className)
         resources = unitResources[className];
     }
     sprMapIdleB     = new Sprite(resources.mapPath + "/Idle",    0, 0, false);
+    sprMapHuzzahB   = new Sprite(resources.mapPath + "/Huzzah",  0, 0, false);
     sprMapRunUpB    = new Sprite(resources.mapPath + "/RunUp",   0, 0, false);
     sprMapRunDownB  = new Sprite(resources.mapPath + "/RunDown", 0, 0, false);
     sprMapRunLeftB  = new Sprite(resources.mapPath + "/RunLeft", 0, 0, false);
-    sprMapHuzzahB   = new Sprite(resources.mapPath + "/Huzzah",  0, 0, false);
     sprMapIdleR     = new Sprite(resources.mapPath + "/Idle",    0, 0, true);
+    sprMapHuzzahR   = new Sprite(resources.mapPath + "/Huzzah",  0, 0, true);
     sprMapRunUpR    = new Sprite(resources.mapPath + "/RunUp",   0, 0, true);
     sprMapRunDownR  = new Sprite(resources.mapPath + "/RunDown", 0, 0, true);
     sprMapRunLeftR  = new Sprite(resources.mapPath + "/RunLeft", 0, 0, true);
-    sprMapHuzzahR   = new Sprite(resources.mapPath + "/Huzzah",  0, 0, true);
     sprMugshot      = new Sprite(resources.mugshotPath,          0, 0, false);
     sprMugshotTiny  = new Sprite(resources.mugshotTinyPath,      0, 0, false);
 
@@ -84,10 +84,12 @@ Unit::Unit(std::string displayName, std::string className)
 Unit::~Unit()
 {
     delete sprMapIdleR;
+    delete sprMapHuzzahR;
     delete sprMapRunUpR;
     delete sprMapRunDownR;
     delete sprMapRunLeftR;
     delete sprMapIdleB;
+    delete sprMapHuzzahB;
     delete sprMapRunUpB;
     delete sprMapRunDownB;
     delete sprMapRunLeftB;
@@ -105,15 +107,17 @@ void Unit::render(int pixelX, int pixelY, int sprIndex, int viewportPixelOffsetX
     switch (sprIndex)
     {
         case  0: s = sprMapIdleB;    break;
-        case  1: s = sprMapRunUpB;   break;
-        case  2: s = sprMapRunDownB; break;
-        case  3: s = sprMapRunLeftB; sprMapRunLeftB->scaleX =  1; break;
-        case  4: s = sprMapRunLeftB; sprMapRunLeftB->scaleX = -1; break;
-        case  5: s = sprMapIdleR;    break;
-        case  6: s = sprMapRunUpR;   break;
-        case  7: s = sprMapRunDownR; break;
-        case  8: s = sprMapRunLeftR; sprMapRunLeftR->scaleX =  1; break;
-        case  9: s = sprMapRunLeftR; sprMapRunLeftR->scaleX = -1; break;
+        case  1: s = sprMapHuzzahB;  break;
+        case  2: s = sprMapRunUpB;   break;
+        case  3: s = sprMapRunDownB; break;
+        case  4: s = sprMapRunLeftB; sprMapRunLeftB->scaleX =  1; break;
+        case  5: s = sprMapRunLeftB; sprMapRunLeftB->scaleX = -1; break;
+        case  6: s = sprMapIdleR;    break;
+        case  7: s = sprMapHuzzahR;  break;
+        case  8: s = sprMapRunUpR;   break;
+        case  9: s = sprMapRunDownR; break;
+        case 10: s = sprMapRunLeftR; sprMapRunLeftR->scaleX =  1; break;
+        case 11: s = sprMapRunLeftR; sprMapRunLeftR->scaleX = -1; break;
         default: s = sprMapIdleB; break;
     }
     s->x = (int)(viewportPixelOffsetX + pixelX);

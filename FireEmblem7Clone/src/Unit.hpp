@@ -38,16 +38,16 @@ private:
     std::unordered_map<std::string, UnitResources> unitResources;
 
     Sprite* sprMapIdleB     = nullptr;
+    Sprite* sprMapHuzzahB   = nullptr;
     Sprite* sprMapRunUpB    = nullptr;
     Sprite* sprMapRunDownB  = nullptr;
     Sprite* sprMapRunLeftB  = nullptr;
-    Sprite* sprMapHuzzahB   = nullptr;
 
     Sprite* sprMapIdleR     = nullptr;
+    Sprite* sprMapHuzzahR   = nullptr;
     Sprite* sprMapRunUpR    = nullptr;
     Sprite* sprMapRunDownR  = nullptr;
     Sprite* sprMapRunLeftR  = nullptr;
-    Sprite* sprMapHuzzahR   = nullptr;
 
 public:
     std::string displayName;
