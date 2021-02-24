@@ -390,9 +390,10 @@ void Map::playerPhase()
                 if (cursorX == selectedUnit->tileX &&
                     cursorY == selectedUnit->tileY)
                 {
-                    clearPreviewTiles();
                     calculateMenuChoices();
 
+                    clearPreviewTiles();
+                    createAttackPreviewTiles(selectedUnit);
                     mapState = UnitMenu;
                 }
                 else
@@ -467,6 +468,8 @@ void Map::playerPhase()
             selectedUnit->tileX = cursorX;
             selectedUnit->tileY = cursorY;
             calculateMenuChoices();
+            clearPreviewTiles();
+            createAttackPreviewTiles(selectedUnit);
             mapState = UnitMenu;
         }
         break;
@@ -474,6 +477,7 @@ void Map::playerPhase()
 
     case UnitMenu:
     {
+        renderPreviewTiles();
         renderUnits(&unitsEnemy,  6, nullptr);
         renderUnits(&unitsPlayer, 0, nullptr);
         renderMainMenu();
@@ -554,6 +558,8 @@ void Map::playerPhase()
         else if (Input::pressedB())
         {
             calculateMenuChoices();
+            clearPreviewTiles();
+            createAttackPreviewTiles(selectedUnit);
             mapState = UnitMenu;
         }
 
@@ -617,6 +623,8 @@ void Map::playerPhase()
                 if (selectedUnit->items.size() == 0)
                 {
                     calculateMenuChoices();
+                    clearPreviewTiles();
+                    createAttackPreviewTiles(selectedUnit);
                     mapState = UnitMenu;
                 }
             }
@@ -1040,7 +1048,7 @@ void Map::calculatePreviewTiles(Unit* unit)
         count++;
     }
 
-    std::unordered_set<int> tilesAlreadySet;
+    std::unordered_set<int> blueTiles;
 
     for (i = 0; i < NUM_NODES; i++)
     {
@@ -1054,7 +1062,7 @@ void Map::calculatePreviewTiles(Unit* unit)
             int tileY = Map::selectedUnit->tileY + nodeY;
 
             Map::previewTilesBlue.push_back(new Sprite("res/Images/Sprites/Map/PreviewTileBlue", tileX, tileY, false));
-            tilesAlreadySet.insert(tileX | (tileY << 16));
+            blueTiles.insert(tileX | (tileY << 16));
         }
         //printf("Path = %d", i);
         j = i;
@@ -1067,6 +1075,7 @@ void Map::calculatePreviewTiles(Unit* unit)
     }
 
     std::unordered_set<int> attackRanges = unit->getAttackRanges();
+    std::unordered_set<int> redTiles;
 
     for (int t = 0; t < previewTilesBlue.size(); t++)
     {
@@ -1081,44 +1090,22 @@ void Map::calculatePreviewTiles(Unit* unit)
             continue;
         }
 
-        for (auto itr = attackRanges.begin(); itr != attackRanges.end(); ++itr)
-        {
-            int range = *itr;
-            for (int y = -range; y <= range; y++)
-            {
-                for (int x = -range; x <= range; x++)
-                {
-                    if (abs(y) + abs(x) == range)
-                    {
-                        int globalX = baseX + x;
-                        int globalY = baseY + y;
-
-                        if (globalX < 0 || globalX >= tilesWidth ||
-                            globalY < 0 || globalY >= tilesHeight)
-                        {
-                            continue;
-                        }
-
-                        auto contains = tilesAlreadySet.find(globalX | (globalY << 16));
-                        if (contains != tilesAlreadySet.end())
-                        {
-                            continue;
-                        }
-
-                        MapTile tile = tiles[globalX + tilesWidth*globalY];
-                        if (tile.type != NoPass)
-                        {
-                            Map::previewTilesRed.push_back(new Sprite("res/Images/Sprites/Map/PreviewTileRed", globalX, globalY, false));
-                            tilesAlreadySet.insert(globalX | (globalY << 16));
-                        }
-                    }
-                }
-            }
-        }
+        std::unordered_set<int> newReds = calculateRedTilesAtTile(baseX, baseY, attackRanges);
+        redTiles.insert(newReds.begin(), newReds.end());
     }
 
-    //delete[] cost;
-    //delete[] graph;
+    for (auto itr = redTiles.begin(); itr != redTiles.end(); ++itr)
+    {
+        int newRedTile = *itr;
+
+        auto contains = blueTiles.find(newRedTile);
+        if (contains == blueTiles.end()) //Dont create if already a blue tile
+        {
+            int x = newRedTile & 0xFFFF;
+            int y = (newRedTile >> 16) & 0xFFFF;
+            Map::previewTilesRed.push_back(new Sprite("res/Images/Sprites/Map/PreviewTileRed", x, y, false));
+        }
+    }
 }
 
 void Map::renderPreviewArrows()
@@ -1646,4 +1633,53 @@ void Map::renderCursor()
     cursor->y = viewportPixelY + cursorY*16;
     cursor->imageIndex++;
     cursor->render();
+}
+
+std::unordered_set<int> Map::calculateRedTilesAtTile(int tileX, int tileY, std::unordered_set<int> ranges)
+{
+    std::unordered_set<int> reds;
+
+    for (auto itr = ranges.begin(); itr != ranges.end(); ++itr)
+    {
+        int range = *itr;
+        for (int y = -range; y <= range; y++)
+        {
+            for (int x = -range; x <= range; x++)
+            {
+                if (abs(y) + abs(x) == range)
+                {
+                    int globalX = tileX + x;
+                    int globalY = tileY + y;
+
+                    if (globalX < 0 || globalX >= tilesWidth ||
+                        globalY < 0 || globalY >= tilesHeight)
+                    {
+                        continue;
+                    }
+
+                    MapTile tile = tiles[globalX + tilesWidth*globalY];
+                    if (tile.type != NoPass)
+                    {
+                        reds.insert(globalX | (globalY << 16));
+                    }
+                }
+            }
+        }
+    }
+
+    return reds;
+}
+
+void Map::createAttackPreviewTiles(Unit* unit)
+{
+    std::unordered_set<int> reds = calculateRedTilesAtTile(unit->tileX, unit->tileY, unit->getAttackRanges());
+
+    for (auto itr = reds.begin(); itr != reds.end(); ++itr)
+    {
+        int newRedTile = *itr;
+
+        int x = (newRedTile >>  0) & 0xFFFF;
+        int y = (newRedTile >> 16) & 0xFFFF;
+        Map::previewTilesRed.push_back(new Sprite("res/Images/Sprites/Map/PreviewTileRed", x, y, false));
+    }
 }

@@ -97,6 +97,9 @@ public:
     static std::vector<Sprite*> previewTilesBlue;
     static std::vector<Sprite*> previewTilesRed;
 
+    static void createAttackPreviewTiles(Unit* unit);
+    static std::unordered_set<int> calculateRedTilesAtTile(int tileX, int tileY, std::unordered_set<int> ranges);
+
     static Sprite* previewArrowSprite;
     static void renderPreviewArrows();
 
