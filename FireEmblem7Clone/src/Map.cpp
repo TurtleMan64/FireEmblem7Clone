@@ -37,7 +37,6 @@ int Map::cursorX = 0;
 int Map::cursorY = 0;
 
 int Map::walkingTimer = 0;
-bool Map::hasTemporarilyWalked = false;
 std::vector<SDL_Point> Map::walkingPath;
 
 Sprite* Map::menuCursor = nullptr;
@@ -45,12 +44,12 @@ int Map::menuIdx = 0;
 std::vector<std::string> Map::menuChoices;
 
 int  Map::itemIdx = 0;
-bool Map::isViewingItems = false;
 
 int  Map::itemEditIdx = 0;
 std::vector<std::string> Map::itemEditChoices;
 
-bool Map::hasSelectedBlankTile = false;
+
+Sprite* Map::attackPreviewBackdrop = nullptr;
 
 Sprite* Map::turnChangeSprite = nullptr;
 int Map::turnChangeTimer = 0;
@@ -60,6 +59,8 @@ bool Map::isPhaseEnemy = true;
 Unit* Map::selectedUnit = nullptr;
 int Map::selectedUnitOriginalTileX = 0;
 int Map::selectedUnitOriginalTileY = 0;
+bool Map::selectedUnitCanGoBack = true;
+
 std::vector<Sprite*> Map::previewTilesBlue;
 std::vector<Sprite*> Map::previewTilesRed;
 
@@ -79,6 +80,12 @@ int Map::hudUnitDescriptorY = 0;
 Sprite* Map::hudUnitDescriptorSprite = nullptr;
 Sprite* Map::hudStatTexts = nullptr;
 Sprite* Map::hudHpBar = nullptr;
+
+int  Map::tradeLeftIdx  = 0;
+int  Map::tradeRightIdx = 0;
+bool Map::tradeSideLeft = false;
+bool Map::tradeIsLocked = false;
+Unit* Map::tradingUnit = nullptr;
 
 int* Map::dijkstraGraph         = nullptr;
 int* Map::dijkstraCost          = nullptr;
@@ -255,6 +262,11 @@ void Map::loadFresh(int mapId)
     {
         turnChangeSprite = new Sprite("res/Images/Sprites/Map/TurnChange", 0, 64, false);
     }
+
+    if (attackPreviewBackdrop == nullptr)
+    {
+        attackPreviewBackdrop = new Sprite("res/Images/Sprites/Map/PreviewAttack", 0, 0, false);
+    }
 }
 
 void Map::step()
@@ -317,6 +329,7 @@ void Map::playerPhase()
                 clearPreviewTiles();
                 calculatePreviewTiles(selectedUnit);
                 mapState = MovingUnit;
+                selectedUnitCanGoBack = true;
             }
             else
             {
@@ -390,10 +403,9 @@ void Map::playerPhase()
                 if (cursorX == selectedUnit->tileX &&
                     cursorY == selectedUnit->tileY)
                 {
-                    calculateMenuChoices();
-
                     clearPreviewTiles();
-                    createAttackPreviewTiles(selectedUnit);
+                    createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+                    calculateMenuChoices();
                     mapState = UnitMenu;
                 }
                 else
@@ -467,9 +479,9 @@ void Map::playerPhase()
         {
             selectedUnit->tileX = cursorX;
             selectedUnit->tileY = cursorY;
-            calculateMenuChoices();
             clearPreviewTiles();
-            createAttackPreviewTiles(selectedUnit);
+            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+            calculateMenuChoices();
             mapState = UnitMenu;
         }
         break;
@@ -501,14 +513,21 @@ void Map::playerPhase()
         }
         else if (Input::pressedB())
         {
-            selectedUnit->tileX = selectedUnitOriginalTileX;
-            selectedUnit->tileY = selectedUnitOriginalTileY;
+            if (selectedUnitCanGoBack)
+            {
+                selectedUnit->tileX = selectedUnitOriginalTileX;
+                selectedUnit->tileY = selectedUnitOriginalTileY;
 
-            clearPreviewTiles();
+                clearPreviewTiles();
 
-            selectedUnit = nullptr;
-            resetNeutralHudDescriptions();
-            mapState = Neutral;
+                selectedUnit = nullptr;
+                resetNeutralHudDescriptions();
+                mapState = Neutral;
+            }
+            else
+            {
+                //play some sound
+            }
         }
 
         break;
@@ -519,8 +538,8 @@ void Map::playerPhase()
         renderUnits(&unitsEnemy,  6, nullptr);
         renderUnits(&unitsPlayer, 0, nullptr);
 
-        renderItemWindow(selectedUnit, 16, 16);
-        renderHandCursor(16, 16, itemIdx);
+        renderItemWindow(selectedUnit, 16, 16, (int)selectedUnit->items.size());
+        renderHandCursor(16, 12, itemIdx);
         renderItemWeaponStatsWindow();
 
         if (Input::pressedUp())
@@ -557,9 +576,9 @@ void Map::playerPhase()
         }
         else if (Input::pressedB())
         {
-            calculateMenuChoices();
             clearPreviewTiles();
-            createAttackPreviewTiles(selectedUnit);
+            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+            calculateMenuChoices();
             mapState = UnitMenu;
         }
 
@@ -571,7 +590,7 @@ void Map::playerPhase()
         renderUnits(&unitsEnemy,  6, nullptr);
         renderUnits(&unitsPlayer, 0, nullptr);
 
-        renderItemWindow(selectedUnit, 16, 16);
+        renderItemWindow(selectedUnit, 16, 16, (int)selectedUnit->items.size());
         renderItemWeaponStatsWindow();
         renderItemEditWindow();
 
@@ -622,9 +641,9 @@ void Map::playerPhase()
 
                 if (selectedUnit->items.size() == 0)
                 {
-                    calculateMenuChoices();
                     clearPreviewTiles();
-                    createAttackPreviewTiles(selectedUnit);
+                    createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+                    calculateMenuChoices();
                     mapState = UnitMenu;
                 }
             }
@@ -653,32 +672,223 @@ void Map::playerPhase()
         break;
     }
 
-    case UnitMenuAttack:
-    {
-        break;
-    }
-
-    case UnitMenuAttackSelectWeapon:
-    {
-        break;
-    }
-
     case UnitMenuAttackSelectTarget:
     {
         updateCursor();
+
+        renderPreviewTiles();
+        renderUnits(&unitsEnemy,  6, nullptr);
+        renderUnits(&unitsPlayer, 0, nullptr);
+        renderAttackPreview();
+
         renderCursor();
+
+        if (Input::pressedA())
+        {
+            Unit* enemyOnCursor = getUnitAtTile(cursorX, cursorY, &unitsEnemy);
+            if (enemyOnCursor != nullptr)
+            {
+                enemyOnCursor->hp--;
+                selectedUnit->hp--;
+                selectedUnit->isUsed = true;
+                selectedUnit = nullptr;
+                resetNeutralHudDescriptions();
+                mapState = Neutral;
+            }
+        }
+        else if (Input::pressedB())
+        {
+            clearPreviewTiles();
+            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+            calculateMenuChoices();
+            mapState = UnitMenu;
+        }
+
         break;
     }
 
     case UnitMenuTradeSelectTarget:
     {
         updateCursor();
+        renderUnits(&unitsEnemy,  6, nullptr);
+        renderUnits(&unitsPlayer, 0, nullptr);
         renderCursor();
+
+        if (Input::pressedA())
+        {
+            Unit* unitOnCursor = getUnitAtTile(cursorX, cursorY, &unitsPlayer);
+            if (unitOnCursor != nullptr)
+            {
+                int xDiff = cursorX - selectedUnit->tileX;
+                int yDiff = cursorY - selectedUnit->tileY;
+
+                if (abs(xDiff) + abs(yDiff) == 1)
+                {
+                    tradingUnit = unitOnCursor;
+                    mapState = UnitMenuTrading;
+                }
+            }
+        }
+        else if (Input::pressedB())
+        {
+            clearPreviewTiles();
+            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+            calculateMenuChoices();
+            mapState = UnitMenu;
+        }
+
         break;
     }
 
     case UnitMenuTrading:
     {
+        selectedUnit->sprMugshot->x = 16;
+        selectedUnit->sprMugshot->y = 0;
+        selectedUnit->sprMugshot->scaleX = -1;
+        selectedUnit->sprMugshot->render();
+
+        tradingUnit->sprMugshot->x = 16 + 112;
+        tradingUnit->sprMugshot->y = 0;
+        tradingUnit->sprMugshot->scaleX = 1;
+        tradingUnit->sprMugshot->render();
+
+        renderItemWindow(selectedUnit, 12,   16*4 + 8, 5);
+        renderItemWindow(tradingUnit,  16*7 + 12, 16*4 + 8, 5);
+
+        if (tradeSideLeft || tradeIsLocked)
+        {
+            renderHandCursor(12, 16*4 + 5, tradeLeftIdx);
+        }
+
+        if (!tradeSideLeft || tradeIsLocked)
+        {
+            renderHandCursor(16*7 + 12, 16*4 + 5, tradeRightIdx);
+        }
+
+        if (Input::pressedA())
+        {
+            if (tradeIsLocked)
+            {
+                Item itemLeft(None);
+                Item itemRight(None);
+                if (tradeLeftIdx < selectedUnit->items.size())
+                {
+                    itemLeft = selectedUnit->items[tradeLeftIdx];
+                }
+                if (tradeRightIdx < tradingUnit->items.size())
+                {
+                    itemRight = tradingUnit->items[tradeRightIdx];
+                }
+
+                if (!(itemLeft.id == None && itemRight.id == None))
+                {
+                    if (itemLeft.id == None)
+                    {
+                        selectedUnit->items.push_back(itemRight);
+                    }
+                    else if (itemRight.id == None)
+                    {
+                        selectedUnit->items.erase(selectedUnit->items.begin() + tradeLeftIdx);
+                    }
+                    else
+                    {
+                        selectedUnit->items[tradeLeftIdx] = itemRight;
+                    }
+
+                    if (itemRight.id == None)
+                    {
+                        tradingUnit->items.push_back(itemLeft);
+                    }
+                    else if (itemLeft.id == None)
+                    {
+                        tradingUnit->items.erase(tradingUnit->items.begin() + tradeRightIdx);
+                    }
+                    else
+                    {
+                        tradingUnit->items[tradeRightIdx] = itemLeft;
+                    }
+
+                    tradeIsLocked = false;
+                    tradeRightIdx = 0;
+                    tradeLeftIdx = 0;
+                }
+            }
+            else
+            {
+                tradeIsLocked = true;
+                if (tradeSideLeft)
+                {
+                    tradeRightIdx = 0;
+                }
+                else
+                {
+                    tradeLeftIdx = 0;
+                }
+            }
+        }
+        else if (Input::pressedB())
+        {
+            if (tradeIsLocked)
+            {
+                tradeIsLocked = false;
+            }
+            else
+            {
+                clearPreviewTiles();
+                createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+                calculateMenuChoices();
+                mapState = UnitMenu;
+            }
+        }
+        else if (Input::pressedUp())
+        {
+            int* idx = &tradeLeftIdx;
+
+            if ((!tradeSideLeft && !tradeIsLocked) ||
+                ( tradeSideLeft &&  tradeIsLocked))
+            {
+                idx = &tradeRightIdx;
+            }
+
+            if ((*idx) > 0)
+            {
+                (*idx) = (*idx) - 1;
+            }
+        }
+        else if (Input::pressedDown())
+        {
+            std::vector<Item>* items = &selectedUnit->items;
+            int* idx = &tradeLeftIdx;
+
+            if ((!tradeSideLeft && !tradeIsLocked) ||
+                ( tradeSideLeft &&  tradeIsLocked))
+            {
+                items = &tradingUnit->items;
+                idx = &tradeRightIdx;
+            }
+
+            if ((*idx) < 4 && (*idx) < items->size())
+            {
+                (*idx) = (*idx) + 1;
+            }
+        }
+        else if (Input::pressedLeft())
+        {
+            if (!tradeIsLocked && !tradeSideLeft)
+            {
+                tradeSideLeft = true;
+                tradeLeftIdx = 0;
+            }
+        }
+        else if (Input::pressedRight())
+        {
+            if (!tradeIsLocked && tradeSideLeft)
+            {
+                tradeSideLeft = false;
+                tradeRightIdx = 0;
+            }
+        }
+
         break;
     }
 
@@ -922,6 +1132,28 @@ std::vector<Unit*> Map::getAdjacentUnits(Unit* unit, std::vector<Unit*>* units)
     if (unit4 != nullptr) { adjacentUnits.push_back(unit4); }
 
     return adjacentUnits;
+}
+
+std::vector<Unit*> Map::getEnemiesInRedTiles()
+{
+    std::vector<Unit*> enemies;
+
+    for (int i = 0; i < previewTilesRed.size(); i++)
+    {
+        int tileX = previewTilesRed[i]->x;
+        int tileY = previewTilesRed[i]->y;
+
+        for (int e = 0; e < unitsEnemy.size(); e++)
+        {
+            if (unitsEnemy[e]->tileX == tileX &&
+                unitsEnemy[e]->tileY == tileY)
+            {
+                enemies.push_back(unitsEnemy[e]);
+            }
+        }
+    }
+
+    return enemies;
 }
 
 MapTile Map::getTile(int x, int y)
@@ -1203,10 +1435,8 @@ void Map::calculateMenuChoices()
     menuIdx = 0;
     menuChoices.clear();
 
-    std::vector<Unit*> adjacentEnemyUnits  = getAdjacentUnits(selectedUnit, &unitsEnemy);
-    std::vector<Unit*> adjacentPlayerUnits = getAdjacentUnits(selectedUnit, &unitsPlayer);
-
-    if (adjacentEnemyUnits.size() != 0)
+    std::vector<Unit*> enemiesWeCanAttack = getEnemiesInRedTiles();
+    if (enemiesWeCanAttack.size() > 0)
     {
         menuChoices.push_back("Attack");
     }
@@ -1215,6 +1445,8 @@ void Map::calculateMenuChoices()
     {
         menuChoices.push_back("Item");
     }
+
+    std::vector<Unit*> adjacentPlayerUnits = getAdjacentUnits(selectedUnit, &unitsPlayer);
 
     if (adjacentPlayerUnits.size() != 0)
     {
@@ -1318,19 +1550,34 @@ void Map::executeMenuChoice()
     }
     else if (menuChoices[menuIdx] == "Attack")
     {
-        return;
+        std::vector<Unit*> enemiesWeCanAttack = getEnemiesInRedTiles();
+        if (enemiesWeCanAttack.size() > 0)
+        {
+            cursorX = enemiesWeCanAttack[0]->tileX;
+            cursorY = enemiesWeCanAttack[0]->tileY;
+        }
+        mapState = UnitMenuAttackSelectTarget;
     }
     else if (menuChoices[menuIdx] == "Trade")
     {
-        return;
+        clearPreviewTiles();
+        tradeSideLeft = true;
+        tradeLeftIdx = 0;
+        tradeIsLocked = false;
+
+        std::vector<Unit*> units = getAdjacentUnits(selectedUnit, &unitsPlayer);
+        if (units.size() > 0)
+        {
+            cursorX = units[0]->tileX;
+            cursorY = units[0]->tileY;
+        }
+
+        mapState = UnitMenuTradeSelectTarget;
     }
     else if (menuChoices[menuIdx] == "Item")
     {
         itemIdx = 0;
         mapState = UnitMenuItem;
-        menuIdx = 0;
-        menuChoices.clear();
-        return;
     }
     else if (menuChoices[menuIdx] == "Rescue")
     {
@@ -1342,9 +1589,6 @@ void Map::executeMenuChoice()
         selectedUnit = nullptr;
         resetNeutralHudDescriptions();
         mapState = Neutral;
-        menuIdx = 0;
-        menuChoices.clear();
-        return;
     }
 
     menuIdx = 0;
@@ -1358,7 +1602,7 @@ void Map::renderMainMenu()
     {
         windowBoxX = 11*16;
     }
-    WindowBox::render(3, (int)menuChoices.size() + 1, windowBoxX, 16);
+    WindowBox::render(windowBoxX, 16, 3*2, ((int)menuChoices.size() + 1)*2);
     renderHandCursor(windowBoxX, 16, menuIdx);
 
     for (int i = 0; i < menuChoices.size(); i++)
@@ -1564,16 +1808,16 @@ void Map::renderTurnChange(int imageIndex)
     turnChangeSprite->render({255, 255, 255, (Uint8)(255*tOpp)});
 }
 
-void Map::renderItemWindow(Unit* unit, int originX, int originY)
+void Map::renderItemWindow(Unit* unit, int originX, int originY, int windowHeight)
 {
-    WindowBox::render(7, (int)unit->items.size() + 1, originX, originY);
+    WindowBox::render(originX, originY, 13, windowHeight*2 + 1);
 
     for (int i = 0; i < unit->items.size(); i++)
     {
         Item item = unit->items[i];
-        item.render(originX + 6, originY + 8 + i*16);
-        Text::renderText(item.getName(), Font::White, {255, 255, 255, 255}, originX + 16 + 7, originY + 8 + i*16, false, 0, 0);
-        Text::renderText(std::to_string(item.usesRemaining), Font::White, {198, 255, 255, 255}, originX + 6*16 - 8, originY + 8 + i*16, false, 0, 2);
+        item.render(originX + 4, originY + 4 + i*16);
+        Text::renderText(item.getName(), Font::White, {255, 255, 255, 255}, originX + 16 + 5, originY + 5 + i*16, false, 0, 0);
+        Text::renderText(std::to_string(item.usesRemaining), Font::White, {198, 255, 255, 255}, originX + 6*16 - 11, originY + 6 + i*16, false, 0, 2);
     }
 }
 
@@ -1584,7 +1828,7 @@ void Map::renderItemWeaponStatsWindow()
     selectedUnit->sprMugshot->imageIndex++;
     selectedUnit->sprMugshot->render();
 
-    WindowBox::render(6, 3, 8*16, 6*16);
+    WindowBox::render(8*16, 6*16, 6*2, 3*2);
 
     Text::renderText("Affi", Font::White, {255, 255, 255, 255}, 10*16,     6*16 + 3, false, 0, 0);
     Text::renderText("Atk",  Font::White, {255, 255, 255, 255},  8*16 + 6, 7*16,     false, 0, 0);
@@ -1592,10 +1836,49 @@ void Map::renderItemWeaponStatsWindow()
     Text::renderText("Hit",  Font::White, {255, 255, 255, 255},  8*16 + 6, 8*16 - 2, false, 0, 0);
     Text::renderText("Avd",  Font::White, {255, 255, 255, 255}, 11*16    , 8*16 - 2, false, 0, 0);
 
-    Text::renderText("1",   Font::White, {198, 255, 255, 255},  8*16 + 6 + 17, 7*16,     false, 0, 3);
-    Text::renderText("12",  Font::White, {198, 255, 255, 255}, 11*16     + 19, 7*16,     false, 0, 3);
-    Text::renderText("123", Font::White, {198, 255, 255, 255},  8*16 + 6 + 17, 8*16 - 2, false, 0, 3);
-    Text::renderText("123", Font::White, {198, 255, 255, 255}, 11*16     + 19, 8*16 - 2, false, 0, 3);
+    Item* weapon = selectedUnit->getEquippedWeapon();
+    WeaponStats stats = weapon->getWeaponStats();
+    MapTile tile = tiles[selectedUnit->tileX + selectedUnit->tileY*tilesWidth];
+
+    //Attack calculation
+    int supportBonusAttack = 0;
+    int attack = stats.might + selectedUnit->str + supportBonusAttack;
+
+    //Crit calculation
+    int supportBonusCrit = 0;
+    int criticalBonus = 0;
+    int sRankBonusCrit = 0;
+    if (selectedUnit->weaponRank[stats.type] == S)
+    {
+        sRankBonusCrit = 5;
+    }
+    int crit = stats.crit + selectedUnit->skl/2 + supportBonusCrit + criticalBonus + sRankBonusCrit;
+
+    //Hit calculation
+    int supportBonusHit = 0;
+    int sRankBonusHit = 0;
+    if (selectedUnit->weaponRank[stats.type] == S)
+    {
+        sRankBonusHit = 5;
+    }
+    int tacticanBonusHit = 0;
+    int hit = stats.hit + selectedUnit->skl*2 + selectedUnit->lck/2 + supportBonusHit + sRankBonusHit + tacticanBonusHit;
+
+    //Avoid calculation
+    int supportBonusAvoid = 0;
+    int terrainBonusAvoid = tile.avoid;
+    if (selectedUnit->classType == ClassType::Pegasus ||
+        selectedUnit->classType == ClassType::Wyvern)
+    {
+        terrainBonusAvoid = 0;
+    }
+    int tacticanBonusAvoid = 0;
+    int avoid = selectedUnit->getAttackSpeedWithWeapon(*weapon) + selectedUnit->lck + supportBonusAvoid + terrainBonusAvoid + tacticanBonusAvoid;
+
+    Text::renderText(std::to_string(attack), Font::White, {198, 255, 255, 255},  8*16 + 6 + 17, 7*16,     false, 0, 3);
+    Text::renderText(std::to_string(crit),   Font::White, {198, 255, 255, 255}, 11*16     + 19, 7*16,     false, 0, 3);
+    Text::renderText(std::to_string(hit),    Font::White, {198, 255, 255, 255},  8*16 + 6 + 17, 8*16 - 2, false, 0, 3);
+    Text::renderText(std::to_string(avoid),  Font::White, {198, 255, 255, 255}, 11*16     + 19, 8*16 - 2, false, 0, 3);
 }
 
 void Map::renderItemEditWindow()
@@ -1603,7 +1886,7 @@ void Map::renderItemEditWindow()
     const int ORIGIN_X = 88;
     const int ORIGIN_Y = 8;
 
-    WindowBox::render(3, (int)itemEditChoices.size() + 1, ORIGIN_X, ORIGIN_Y);
+    WindowBox::render(ORIGIN_X, ORIGIN_Y, 6, ((int)itemEditChoices.size() + 1)*2);
     menuCursor->imageIndex++;
     menuCursor->y = ORIGIN_Y + itemEditIdx*16;
     menuCursor->x = ORIGIN_X - 28;
@@ -1670,9 +1953,9 @@ std::unordered_set<int> Map::calculateRedTilesAtTile(int tileX, int tileY, std::
     return reds;
 }
 
-void Map::createAttackPreviewTiles(Unit* unit)
+void Map::createAttackPreviewTiles(Unit* unit, std::unordered_set<int> ranges)
 {
-    std::unordered_set<int> reds = calculateRedTilesAtTile(unit->tileX, unit->tileY, unit->getAttackRanges());
+    std::unordered_set<int> reds = calculateRedTilesAtTile(unit->tileX, unit->tileY, ranges);
 
     for (auto itr = reds.begin(); itr != reds.end(); ++itr)
     {
@@ -1681,5 +1964,34 @@ void Map::createAttackPreviewTiles(Unit* unit)
         int x = (newRedTile >>  0) & 0xFFFF;
         int y = (newRedTile >> 16) & 0xFFFF;
         Map::previewTilesRed.push_back(new Sprite("res/Images/Sprites/Map/PreviewTileRed", x, y, false));
+    }
+}
+
+void Map::renderAttackPreview()
+{
+    Unit* enemyOnCursor = getUnitAtTile(cursorX, cursorY, &unitsEnemy);
+    if (enemyOnCursor != nullptr)
+    {
+        bool unitIsInRedTile = false;
+        for (int i = 0; i < previewTilesRed.size(); i++)
+        {
+            if (enemyOnCursor->tileX == previewTilesRed[i]->x &&
+                enemyOnCursor->tileY == previewTilesRed[i]->y)
+            {
+                unitIsInRedTile = true;
+            }
+        }
+
+        if (unitIsInRedTile)
+        {
+            int baseX = 0;
+            int baseY = 0;
+            attackPreviewBackdrop->x = baseX;
+            attackPreviewBackdrop->y = baseY;
+            attackPreviewBackdrop->render();
+
+            Text::renderText(selectedUnit ->displayName, White, {255,255,255,255}, baseX + 26, baseY +  9, true, 42, 0);
+            Text::renderText(enemyOnCursor->displayName, White, {255,255,255,255}, baseX + 10, baseY + 89, true, 42, 0);
+        }
     }
 }

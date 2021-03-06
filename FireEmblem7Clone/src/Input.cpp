@@ -47,7 +47,7 @@ void Input::poll()
     }
     else
     {
-        timeUntilNextAutoInput = 16;
+        timeUntilNextAutoInput = 20;
     }
 }
 

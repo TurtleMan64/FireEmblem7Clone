@@ -26,8 +26,6 @@ enum MapState
     UnitMenu,
     UnitMenuItem,
     UnitMenuItemAction,
-    UnitMenuAttack,
-    UnitMenuAttackSelectWeapon,
     UnitMenuAttackSelectTarget,
     UnitMenuTradeSelectTarget,
     UnitMenuTrading,
@@ -66,7 +64,7 @@ public:
     static int walkingTimer; //When this is > 0, we are waiting for walking animtation to play out.
     static std::vector<SDL_Point> walkingPath; //The tiles that you walk through
     static void generateWalkingPath(Unit* unit, int tileX, int tileY); //generate walkingPath from unit to tileX, tileY
-    static bool hasTemporarilyWalked; //after walking and the menu is out.
+    //static bool hasTemporarilyWalked; //after walking and the menu is out.
 
     static Sprite* menuCursor;
     static int menuIdx;
@@ -77,9 +75,9 @@ public:
     static void renderMainMenu();
     static void renderHandCursor(int windowX, int windowY, int idx);
 
-    static bool isViewingItems;
+    //static bool isViewingItems;
     static int itemIdx;
-    static void renderItemWindow(Unit* unit, int x, int y);
+    static void renderItemWindow(Unit* unit, int x, int y, int windowHeight);
 
     static void renderItemWeaponStatsWindow();
 
@@ -87,17 +85,20 @@ public:
     static std::vector<std::string> itemEditChoices;
     static void renderItemEditWindow();
 
-    static bool hasSelectedBlankTile; //when u select a blank tile on the map
+    //static bool hasSelectedBlankTile; //when u select a blank tile on the map
 
-    //Variables to control what "state" the map is in.
+    static Sprite* attackPreviewBackdrop;
+    static void renderAttackPreview();
 
     static Unit* selectedUnit;
     static int selectedUnitOriginalTileX;
     static int selectedUnitOriginalTileY;
+    static bool selectedUnitCanGoBack;
+
     static std::vector<Sprite*> previewTilesBlue;
     static std::vector<Sprite*> previewTilesRed;
 
-    static void createAttackPreviewTiles(Unit* unit);
+    static void createAttackPreviewTiles(Unit* unit, std::unordered_set<int> ranges);
     static std::unordered_set<int> calculateRedTilesAtTile(int tileX, int tileY, std::unordered_set<int> ranges);
 
     static Sprite* previewArrowSprite;
@@ -130,6 +131,14 @@ public:
     static Unit* getUnitAtTile(int tileX, int tileY, std::vector<Unit*>* units);
 
     static std::vector<Unit*> getAdjacentUnits(Unit* unit, std::vector<Unit*>* units);
+
+    static std::vector<Unit*> getEnemiesInRedTiles();
+
+    static int tradeLeftIdx;
+    static int tradeRightIdx;
+    static bool tradeSideLeft;
+    static bool tradeIsLocked;
+    static Unit* tradingUnit;
 
     //Calculating blue tiles
     static const int MAX_MOVEMENT = 15;

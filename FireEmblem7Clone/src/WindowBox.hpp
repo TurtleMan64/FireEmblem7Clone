@@ -8,5 +8,5 @@ private:
     static Sprite* tiles;
     
 public:
-    static void render(int width, int height, int x, int y);
+    static void render(int x, int y, int width, int height);
 };

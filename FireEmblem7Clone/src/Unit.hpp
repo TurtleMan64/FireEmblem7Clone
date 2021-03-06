@@ -106,4 +106,10 @@ public:
     void render(int x, int y, int spriteIndex, int viewportPixelOffsetX, int viewportPixelOffsetY);
 
     std::unordered_set<int> getAttackRanges();
+
+    std::unordered_set<int> getEquipWeaponAttackRange();
+
+    Item* getEquippedWeapon();
+
+    int getAttackSpeedWithWeapon(Item weapon);
 };

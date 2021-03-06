@@ -144,10 +144,9 @@ std::unordered_set<int> Unit::getAttackRanges()
 
         if (item.isWeapon())
         {
-            WeaponType weaponType = item.getWeaponType();
-            WeaponRank weaponRankRequirement = item.getWeaponRankRequirement();
+            WeaponStats stats = item.getWeaponStats();
 
-            if (weaponRank[weaponType] >= weaponRankRequirement)
+            if (weaponRank[stats.type] >= stats.rankRequirement)
             {
                 std::unordered_set<int> range = item.getWeaponRange();
 
@@ -157,4 +156,57 @@ std::unordered_set<int> Unit::getAttackRanges()
     }
 
     return ranges;
+}
+
+std::unordered_set<int> Unit::getEquipWeaponAttackRange()
+{
+    for (int i = 0; i < items.size(); i++)
+    {
+        Item item = items[i];
+
+        if (item.isWeapon())
+        {
+            WeaponStats stats = item.getWeaponStats();
+
+            if (weaponRank[stats.type] >= stats.rankRequirement)
+            {
+                return item.getWeaponRange();
+            }
+        }
+    }
+
+    std::unordered_set<int> empty;
+    return empty;
+}
+
+Item* Unit::getEquippedWeapon()
+{
+    for (int i = 0; i < items.size(); i++)
+    {
+        Item item = items[i];
+
+        if (item.isWeapon())
+        {
+            WeaponStats stats = item.getWeaponStats();
+
+            if (weaponRank[stats.type] >= stats.rankRequirement)
+            {
+                return &items[i];
+            }
+        }
+    }
+
+    return &items[0];
+}
+
+int Unit::getAttackSpeedWithWeapon(Item weapon)
+{
+    WeaponStats stats = weapon.getWeaponStats();
+    int weightPenalty = stats.weight - con;
+    if (weightPenalty < 0)
+    {
+        weightPenalty = 0;
+    }
+
+    return spd - weightPenalty;
 }

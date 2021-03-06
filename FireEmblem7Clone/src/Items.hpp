@@ -177,7 +177,6 @@ private:
 
 public:
     ItemId id = None;
-    int usesMax = 1;
     int usesRemaining = 1;
 
     Item(ItemId id);
@@ -190,11 +189,9 @@ public:
 
     void consume(Unit* unit);
 
-    WeaponType getWeaponType();
-
     std::unordered_set<int> getWeaponRange();
 
-    WeaponRank getWeaponRankRequirement();
+    WeaponStats getWeaponStats();
 
     std::string getName();
 };

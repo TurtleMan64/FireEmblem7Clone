@@ -8,7 +8,8 @@ enum WeaponRank
     C = 3,
     B = 4,
     A = 5,
-    S = 6
+    S = 6,
+    U = 7
 };
 
 enum WeaponType
@@ -22,4 +23,17 @@ enum WeaponType
     Light = 6,
     Dark  = 7,
     Staff = 8
+};
+
+struct WeaponStats
+{
+    WeaponType type;
+    WeaponRank rankRequirement;
+    int usesMax;
+    int weight;
+    int might;
+    int hit;
+    int crit;
+    int exp;
+    int worth;
 };
