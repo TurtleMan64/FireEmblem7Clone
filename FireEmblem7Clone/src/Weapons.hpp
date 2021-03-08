@@ -27,13 +27,13 @@ enum WeaponType
 
 struct WeaponStats
 {
-    WeaponType type;
-    WeaponRank rankRequirement;
-    int usesMax;
-    int weight;
-    int might;
-    int hit;
-    int crit;
-    int exp;
-    int worth;
+    WeaponType type = NotWeapon;
+    WeaponRank rankRequirement = N;
+    int usesMax = 1;
+    int weight = 0;
+    int might = 0;
+    int hit = 0;
+    int crit = 0;
+    int exp = 0;
+    int worth = 0;
 };

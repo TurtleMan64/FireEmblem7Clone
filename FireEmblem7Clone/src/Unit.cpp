@@ -2,12 +2,14 @@
 
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 #include "Weapons.hpp"
 #include "Items.hpp"
 #include "Global.hpp"
 #include "Sprite.hpp"
 #include "Util.hpp"
+#include "Map.hpp"
 #include "Unit.hpp"
 
 Unit::UnitResources::UnitResources() {}
@@ -196,7 +198,7 @@ Item* Unit::getEquippedWeapon()
         }
     }
 
-    return &items[0];
+    return nullptr;
 }
 
 int Unit::getAttackSpeedWithWeapon(Item weapon)
@@ -209,4 +211,130 @@ int Unit::getAttackSpeedWithWeapon(Item weapon)
     }
 
     return spd - weightPenalty;
+}
+
+void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* crit)
+{
+    Item* myWeapon = getEquippedWeapon();
+    if (myWeapon == nullptr)
+    {
+        *damage = 0;
+        *hit = 0;
+        *crit = 0;
+        return;
+    }
+
+    int distanceToOther = Util::getManhattanDistance(this, other);
+
+    WeaponStats myWeaponStats = myWeapon->getWeaponStats();
+    std::unordered_set<int> range = myWeapon->getWeaponRange();
+
+    if (range.find(distanceToOther) == range.end())
+    {
+        printf("Weapon not in range\n");
+        *damage = 0;
+        *hit = 0;
+        *crit = 0;
+        return;
+    }
+
+    Item* otherWeapon = other->getEquippedWeapon();
+    WeaponStats otherWeaponStats;
+    if (otherWeapon != nullptr)
+    {
+        otherWeaponStats = otherWeapon->getWeaponStats();
+    }
+
+    int weaponTriangle = Util::getWeaponTriangle(myWeaponStats, otherWeaponStats);
+
+    MapTile myTile = Map::tiles[tileX + tileY*Map::tilesWidth];
+    bool usesTile = true;
+    if (classType == ClassType::Pegasus ||
+        classType == ClassType::Wyvern)
+    {
+        usesTile = false;
+    }
+
+    MapTile otherTile = Map::tiles[other->tileX + other->tileY*Map::tilesWidth];
+    bool otherUsesTile = true;
+    if (other->classType == ClassType::Pegasus ||
+        other->classType == ClassType::Wyvern)
+    {
+        otherUsesTile = false;
+    }
+
+    //Attack
+    int supportBonusAttack = 0;
+    bool isMagicWeapon = 
+        (myWeaponStats.type == Anima ||
+         myWeaponStats.type == Light ||
+         myWeaponStats.type == Dark);
+
+    int attack = myWeaponStats.might + weaponTriangle + supportBonusAttack;
+    int otherDef = 0;
+    if (!isMagicWeapon)
+    {
+        attack += str;
+        otherDef += other->def;
+
+        if (otherUsesTile)
+        {
+            otherDef += otherTile.defense;
+        }
+    }
+    else
+    {
+        attack += mag;
+        otherDef += other->res;
+    }
+
+    int finalDamage = attack - otherDef;
+    if (finalDamage < 0)
+    {
+        finalDamage = 0;
+    }
+    *damage = finalDamage;
+
+
+    //Hit
+    int supportBonusHit = 0;
+    int sRankBonusHit = 0;
+    if (weaponRank[myWeaponStats.type] == S)
+    {
+        sRankBonusHit = 5;
+    }
+    int tacticanBonusHit = 0;
+    int myHit = myWeaponStats.hit + skl*2 + lck/2 + weaponTriangle*15 + supportBonusHit + sRankBonusHit + tacticanBonusHit;
+
+    //Other avoid
+    int otherSupportBonusAvoid = 0;
+    int otherTerrainBonusAvoid = otherTile.avoid;
+    if (!usesTile)
+    {
+        otherTerrainBonusAvoid = 0;
+    }
+    int otherTacticanBonusAvoid = 0;
+    int otherAvoid = other->getAttackSpeedWithWeapon(*otherWeapon)*2 + other->lck + otherSupportBonusAvoid + otherTerrainBonusAvoid + otherTacticanBonusAvoid;
+
+    int finalHit = Util::clamp(0, myHit - otherAvoid, 100);
+    *hit = finalHit;
+
+
+    //Crit
+    int supportBonusCrit = 0;
+    int criticalBonus = 0;
+    int sRankBonusCrit = 0;
+    if (weaponRank[myWeaponStats.type] == S)
+    {
+        sRankBonusCrit = 5;
+    }
+    int myCrit = myWeaponStats.crit + skl/2 + supportBonusCrit + criticalBonus + sRankBonusCrit;
+
+    //Other Crit evade
+    int otherSupportBonusEvade = 0;
+    int otherTacticanBonusEvade = 0;
+    int otherCritEvade = other->lck + otherSupportBonusEvade + otherTacticanBonusEvade;
+
+    int finalCrit = Util::clamp(0, myCrit - otherCritEvade, 100);
+    *crit = finalCrit;
 }

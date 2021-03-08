@@ -278,54 +278,13 @@ std::unordered_set<int> Item::getWeaponRange()
             return ranges;
     }
 }
-/*
-WeaponType Item::getWeaponType()
-{
-    int idx = (int)id;
 
-    if (idx == 0)
-    {
-        return NotWeapon;
-    }
-    else if (idx < (int)IronLance)
-    {
-        return Sword;
-    }
-    else if (idx < (int)HandAxe)
-    {
-        return Lance;
-    }
-    else if (idx < (int)IronBow)
-    {
-        return Axe;
-    }
-    else if (idx < (int)Fire)
-    {
-        return Bow;
-    }
-    else if (idx < (int)Lightning)
-    {
-        return Anima;
-    }
-    else if (idx < (int)Flux)
-    {
-        return Light;
-    }
-    else if (idx < (int)Heal)
-    {
-        return Dark;
-    }
-    else
-    {
-        return NotWeapon;
-    }
-}
-*/
 WeaponStats Item::getWeaponStats()
 {
     switch (id)
     {
         case None         : return {NotWeapon, N,  1,  1,  1,   1,  0, 1,     1};
+
         case IronSword    : return {Sword,     E, 46,  5,  5,  90,  0, 1,   460};
         case SlimSword    : return {Sword,     E, 30,  2,  3, 100,  5, 1,   480};
         case EmblemBlade  : return {Sword,     E, 60,  5,  5,  90,  0, 1,    -1};
@@ -368,24 +327,24 @@ WeaponStats Item::getWeaponStats()
         case SilverLance  : return {Lance,     A, 20, 10, 14, 75,  0, 1,  1200};
         case RexHasta     : return {Lance,     S, 25, 11, 21, 80,  0, 1, 15000};
 
-        case HandAxe      : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case IronAxe      : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case EmblemAxe    : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case SteelAxe     : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case DevilAxe     : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case PoisonAxe    : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case Halberd      : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case Hammer       : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case DragonAxe    : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case KillerAxe    : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case Swordreaver  : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case Swordslayer  : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case BraveAxe     : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case Tomahawk     : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case SilverAxe    : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case Basilikos    : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case WolfBeil     : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
-        case Armads       : return {Axe,       E, 1, 1, 1, 1, 0, 1, 1};
+        case HandAxe      : return {Axe,       E, 20, 12,  7, 60,  0, 1,   300};
+        case IronAxe      : return {Axe,       E, 45, 10,  8, 75,  0, 1,   270};
+        case EmblemAxe    : return {Axe,       E, 60, 10,  8, 75,  0, 1,    -1};
+        case SteelAxe     : return {Axe,       E, 30, 15, 11, 65,  0, 2,   360};
+        case DevilAxe     : return {Axe,       E, 20, 18, 18, 55,  0, 8,   900};
+        case PoisonAxe    : return {Axe,       D, 40, 10,  4, 60,  0, 1,    -1};
+        case Halberd      : return {Axe,       D, 18, 15, 10, 60,  0, 1,   810};
+        case Hammer       : return {Axe,       D, 20, 15, 10, 55,  0, 2,   800};
+        case DragonAxe    : return {Axe,       C, 40, 11, 10, 60,  0, 1,  6000};
+        case KillerAxe    : return {Axe,       C, 20, 11, 11, 65, 30, 1,  1000};
+        case Swordreaver  : return {Axe,       C, 15, 13, 11, 65,  5, 2,  2100};
+        case Swordslayer  : return {Axe,       C, 20, 13, 11, 80,  5, 1,  2000};
+        case BraveAxe     : return {Axe,       B, 30, 16, 10, 65,  0, 1,  2250};
+        case Tomahawk     : return {Axe,       A, 15, 14, 13, 65,  0, 1,  3000};
+        case SilverAxe    : return {Axe,       A, 20, 12, 15, 70,  0, 1,  1000};
+        case Basilikos    : return {Axe,       S, 25, 13, 22, 75,  0, 1, 15000};
+        case WolfBeil     : return {Axe,       U, 30, 10, 10, 75,  5, 1,  6000};
+        case Armads       : return {Axe,       U, 25, 18, 18, 85,  0, 1,    -1};
 
         case IronBow      : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
         case EmblemBow    : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
@@ -398,13 +357,13 @@ WeaponStats Item::getWeaponStats()
         case SilverBow    : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
         case Rienfleche   : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
 
-        case Fire         : return {Anima,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Thunder      : return {Anima,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Elfire       : return {Anima,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Bolting      : return {Anima,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Fimbulvetr   : return {Anima,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Excalibur    : return {Anima,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Forblaze     : return {Anima,     E, 1, 1, 1, 1, 0, 1, 1};
+        case Fire         : return {Anima,     E, 40,  4,  5, 90,  0, 1,   500};
+        case Thunder      : return {Anima,     D, 35,  6,  8, 80,  5, 1,   700};
+        case Elfire       : return {Anima,     C, 30, 10, 10, 85,  0, 2,  1200};
+        case Bolting      : return {Anima,     B,  5, 20, 12, 60,  0, 1,  2500};
+        case Fimbulvetr   : return {Anima,     A, 20, 12, 13, 80,  0, 1,  6000};
+        case Excalibur    : return {Anima,     S, 25, 13, 18, 90, 10, 3, 25000};
+        case Forblaze     : return {Anima,     U, 20, 11, 14, 85,  5, 1,    -1};
 
         case Lightning    : return {Light,     E, 1, 1, 1, 1, 0, 1, 1};
         case Shine        : return {Light,     E, 1, 1, 1, 1, 0, 1, 1};

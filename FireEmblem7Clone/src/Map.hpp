@@ -88,6 +88,7 @@ public:
     //static bool hasSelectedBlankTile; //when u select a blank tile on the map
 
     static Sprite* attackPreviewBackdrop;
+    static Sprite* attackPreviewMultiplier;
     static void renderAttackPreview();
 
     static Unit* selectedUnit;

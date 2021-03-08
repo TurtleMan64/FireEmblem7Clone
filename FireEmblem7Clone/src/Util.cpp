@@ -107,6 +107,60 @@ int Util::approach(int current, int target, float rate)
     return current;
 }
 
+int Util::getManhattanDistance(Unit* unit1, Unit* unit2)
+{
+    int diffX = unit1->tileX - unit2->tileX;
+    int diffY = unit1->tileY - unit2->tileY;
+
+    return abs(diffX) + abs(diffY);
+}
+
+int Util::getWeaponTriangle(WeaponStats myWeapon, WeaponStats otherWeapon)
+{
+    if (myWeapon.type == NotWeapon || otherWeapon.type == NotWeapon ||
+        myWeapon.type == Bow       || otherWeapon.type == Bow       ||
+        myWeapon.type == Staff     || otherWeapon.type == Staff)
+    {
+        return 0;
+    }
+
+    switch (myWeapon.type)
+    {
+        case Sword:
+            if (otherWeapon.type == Lance) return -1;
+            if (otherWeapon.type == Axe)   return  1;
+            return 0;
+
+        case Lance:
+            if (otherWeapon.type == Axe)   return -1;
+            if (otherWeapon.type == Sword) return  1;
+            return 0;
+
+        case Axe:
+            if (otherWeapon.type == Sword) return -1;
+            if (otherWeapon.type == Lance) return  1;
+            return 0;
+
+        case Anima:
+            if (otherWeapon.type == Dark)  return -1;
+            if (otherWeapon.type == Light) return  1;
+            return 0;
+
+        case Light:
+            if (otherWeapon.type == Anima) return -1;
+            if (otherWeapon.type == Dark)  return  1;
+            return 0;
+
+        case Dark:
+            if (otherWeapon.type == Light) return -1;
+            if (otherWeapon.type == Anima) return  1;
+            return 0;
+
+        default:
+            return 0;
+    }
+}
+
 bool Util::fileExists(std::string path)
 {
     std::ifstream file(path);

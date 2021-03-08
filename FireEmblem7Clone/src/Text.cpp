@@ -63,7 +63,7 @@ void Text::loadFont(Font fontToLoad)
     }
 }
 
-void Text::renderText(std::string text, Font font, SDL_Color color, int x, int y, bool centered, int width, int padding)
+void Text::renderText(std::string text, Font font, SDL_Color color, int x, int y, Alignment alignment, int width)
 {
     SDL_Texture** fontTex = nullptr;
     std::unordered_map<char, SDL_Rect>* asciiToRect = nullptr;
@@ -90,37 +90,25 @@ void Text::renderText(std::string text, Font font, SDL_Color color, int x, int y
     }
 
     int textWidth = 0;
-    if (centered)
+    for (int i = 0; i < text.size(); i++)
     {
-        for (int i = 0; i < text.size(); i++)
-        {
-            char c = text[i];
-            SDL_Rect letterRect = asciiToRect->at(c);
-            textWidth += letterRect.w;
-        }
+        char c = text[i];
+        SDL_Rect letterRect = asciiToRect->at(c);
+        textWidth += letterRect.w;
     }
-    else
+
+    if (alignment == Left)
     {
+        textWidth = 0;
         width = 0;
     }
-
-    int paddingOffset = 0;
-    if (padding > 0)
+    else if (alignment == Center)
     {
-        int diff = padding - (int)text.size();
-
-        int avgCharWidth = 0;
-        for (int i = 0; i < text.size(); i++)
-        {
-            char c = text[i];
-            SDL_Rect letterRect = asciiToRect->at(c);
-            avgCharWidth += letterRect.w;
-        }
-        avgCharWidth = avgCharWidth/(int)text.size();
-        paddingOffset = avgCharWidth*diff;
+        textWidth = textWidth/2;
+        width = width/2;
     }
 
-    int xOff = ((x + (width/2)) - (textWidth/2)) + paddingOffset;
+    int xOff = (x + width) - textWidth;
     for (int i = 0; i < text.size(); i++)
     {
         char c = text[i];

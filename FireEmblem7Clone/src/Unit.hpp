@@ -112,4 +112,6 @@ public:
     Item* getEquippedWeapon();
 
     int getAttackSpeedWithWeapon(Item weapon);
+
+    void calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* crit);
 };

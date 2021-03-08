@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+#include "Weapons.hpp"
+#include "Unit.hpp"
+
 class Util
 {
 public:
@@ -13,6 +16,11 @@ public:
     static int clamp(int lower, int var, int higher);
 
     static int approach(int current, int target, float rate);
+
+    static int getManhattanDistance(Unit* unit1, Unit* unit2);
+
+    //-1 if myWeapon is bad against other, 0 if neutral, 1 if myWeapon is good against other
+    static int getWeaponTriangle(WeaponStats myWeapon, WeaponStats otherWeapon);
 
     static SDL_Texture* loadRedImage(std::string path);
 

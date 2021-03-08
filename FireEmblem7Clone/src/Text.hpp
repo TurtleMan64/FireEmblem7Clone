@@ -12,6 +12,13 @@ enum Font
     Black
 };
 
+enum Alignment
+{
+    Left,
+    Center,
+    Right
+};
+
 class Text
 {
 private:
@@ -23,5 +30,5 @@ private:
     static void loadFont(Font fontToLoad);
 
 public:
-    static void renderText(std::string text, Font font, SDL_Color color, int x, int y, bool centered, int width, int padding);
+    static void renderText(std::string text, Font font, SDL_Color color, int x, int y, Alignment alignment, int width);
 };
