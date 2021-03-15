@@ -25,6 +25,7 @@ int Global::fadeInTimer = 30;
 int main()
 {
     SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_GAMECONTROLLER);
     IMG_Init(IMG_INIT_PNG);
 
     SDL_Window* window = SDL_CreateWindow("FE7", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 240, 160, SDL_WINDOW_RESIZABLE);
@@ -34,6 +35,7 @@ int main()
     SDL_Texture* mainRenderTexture = SDL_CreateTexture(Global::sdlRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 240, 160);
 
     MainMenu::init();
+    Input::init();
 
     //SDL_SetHintWithPriority(SDL_HINT_RENDER_VSYNC, "0", SDL_HINT_OVERRIDE);
     //SDL_GL_SetSwapInterval(0);
@@ -153,8 +155,6 @@ int main()
                 break;
         }
 
-        //SDL_RenderCopy(Global::sdlRenderer, animation.getTexture(animIndex), nullptr, &rectEntireScreen);
-
         //Render a fadeout/fadein
         if (Global::fadeInTimer > 0)
         {
@@ -169,33 +169,58 @@ int main()
         }
 
         SDL_SetRenderTarget(Global::sdlRenderer, nullptr); //render to main window
+
+        bool integerScaling = true;
+
         int windowW;
         int windowH;
         SDL_GetWindowSize(window, &windowW, &windowH);
-        float ratio = ((float)windowW)/windowH;
-        if (ratio == 1.5f)
+
+        int scaleH = windowH/160;
+        int scaleW = windowW/240;
+
+        int scale = scaleH;
+        if (scaleW < scaleH)
         {
-            SDL_RenderCopy(Global::sdlRenderer, mainRenderTexture, nullptr, nullptr);
+            scale = scaleW;
         }
-        else if (ratio > 1.5f)
+
+        if (integerScaling && scale > 0)
         {
-            int desiredWidth = (int)(windowH*1.5f);
             SDL_Rect gbaImageRect;
-            gbaImageRect.x = (windowW - desiredWidth)/2;
-            gbaImageRect.y = 0;
-            gbaImageRect.w = desiredWidth;
-            gbaImageRect.h = windowH;
+            gbaImageRect.x = (windowW - 240*scale)/2;
+            gbaImageRect.y = (windowH - 160*scale)/2;
+            gbaImageRect.w = 240*scale;
+            gbaImageRect.h = 160*scale;
             SDL_RenderCopy(Global::sdlRenderer, mainRenderTexture, nullptr, &gbaImageRect);
         }
         else
         {
-            int desiredHeight = (int)(windowW/1.5f);
-            SDL_Rect gbaImageRect;
-            gbaImageRect.x = 0;
-            gbaImageRect.y = (windowH - desiredHeight)/2;
-            gbaImageRect.w = windowW;
-            gbaImageRect.h = desiredHeight;
-            SDL_RenderCopy(Global::sdlRenderer, mainRenderTexture, nullptr, &gbaImageRect);
+            float ratio = ((float)windowW)/windowH;
+            if (ratio == 1.5f)
+            {
+                SDL_RenderCopy(Global::sdlRenderer, mainRenderTexture, nullptr, nullptr);
+            }
+            else if (ratio > 1.5f)
+            {
+                int desiredWidth = (int)(windowH*1.5f);
+                SDL_Rect gbaImageRect;
+                gbaImageRect.x = (windowW - desiredWidth)/2;
+                gbaImageRect.y = 0;
+                gbaImageRect.w = desiredWidth;
+                gbaImageRect.h = windowH;
+                SDL_RenderCopy(Global::sdlRenderer, mainRenderTexture, nullptr, &gbaImageRect);
+            }
+            else
+            {
+                int desiredHeight = (int)(windowW/1.5f);
+                SDL_Rect gbaImageRect;
+                gbaImageRect.x = 0;
+                gbaImageRect.y = (windowH - desiredHeight)/2;
+                gbaImageRect.w = windowW;
+                gbaImageRect.h = desiredHeight;
+                SDL_RenderCopy(Global::sdlRenderer, mainRenderTexture, nullptr, &gbaImageRect);
+            }
         }
 
         SDL_RenderPresent(Global::sdlRenderer);

@@ -129,6 +129,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Battle.cpp" />
+    <ClCompile Include="src\Djikstra.cpp" />
     <ClCompile Include="src\Items.cpp" />
     <ClCompile Include="src\Text.cpp" />
     <ClCompile Include="src\ImageAnimation.cpp" />
@@ -145,6 +146,7 @@
   <ItemGroup>
     <ClInclude Include="src\Battle.hpp" />
     <ClInclude Include="src\ClassData.hpp" />
+    <ClInclude Include="src\Djikstra.hpp" />
     <ClInclude Include="src\Text.hpp" />
     <ClInclude Include="src\Global.hpp" />
     <ClInclude Include="src\ImageAnimation.hpp" />

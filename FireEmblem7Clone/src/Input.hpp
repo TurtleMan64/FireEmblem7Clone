@@ -8,8 +8,10 @@ private:
     static Uint8 inputs[9];
     static Uint8 inputsPrev[9];
     static int timeUntilNextAutoInput;
+    static SDL_GameController* controller;
 
 public:
+    static void init();
     static void poll();
      
     static bool pressedA();

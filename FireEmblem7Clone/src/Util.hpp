@@ -15,6 +15,12 @@ public:
     //makes var be in [lower, higher] range
     static int clamp(int lower, int var, int higher);
 
+    //returns average of 2 random calls [0, 99] 
+    static int random2();
+
+    //returns random [0, 99]
+    static int random();
+
     static int approach(int current, int target, float rate);
 
     static int getManhattanDistance(Unit* unit1, Unit* unit2);

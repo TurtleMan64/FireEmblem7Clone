@@ -201,16 +201,30 @@ Item* Unit::getEquippedWeapon()
     return nullptr;
 }
 
-int Unit::getAttackSpeedWithWeapon(Item weapon)
+int Unit::getAttackSpeedWithWeapon(WeaponStats weaponStats)
 {
-    WeaponStats stats = weapon.getWeaponStats();
-    int weightPenalty = stats.weight - con;
+    int weightPenalty = weaponStats.weight - con;
     if (weightPenalty < 0)
     {
         weightPenalty = 0;
     }
 
     return spd - weightPenalty;
+}
+
+bool Unit::canUseWeapon(Item weapon)
+{
+    if (weapon.isWeapon())
+    {
+        WeaponStats stats = weapon.getWeaponStats();
+
+        if (weaponRank[stats.type] >= stats.rankRequirement)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* crit)
@@ -299,7 +313,7 @@ void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* c
     //Hit
     int supportBonusHit = 0;
     int sRankBonusHit = 0;
-    if (weaponRank[myWeaponStats.type] == S)
+    if (weaponRank[myWeaponStats.type] >= S)
     {
         sRankBonusHit = 5;
     }
@@ -314,7 +328,7 @@ void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* c
         otherTerrainBonusAvoid = 0;
     }
     int otherTacticanBonusAvoid = 0;
-    int otherAvoid = other->getAttackSpeedWithWeapon(*otherWeapon)*2 + other->lck + otherSupportBonusAvoid + otherTerrainBonusAvoid + otherTacticanBonusAvoid;
+    int otherAvoid = other->getAttackSpeedWithWeapon(otherWeaponStats)*2 + other->lck + otherSupportBonusAvoid + otherTerrainBonusAvoid + otherTacticanBonusAvoid;
 
     int finalHit = Util::clamp(0, myHit - otherAvoid, 100);
     *hit = finalHit;
@@ -324,7 +338,7 @@ void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* c
     int supportBonusCrit = 0;
     int criticalBonus = 0;
     int sRankBonusCrit = 0;
-    if (weaponRank[myWeaponStats.type] == S)
+    if (weaponRank[myWeaponStats.type] >= S)
     {
         sRankBonusCrit = 5;
     }

@@ -94,7 +94,7 @@ public:
     int growthDef = 0;
     int growthRes = 0;
 
-    WeaponRank weaponRank[9] = {N,N,N,N,N,N,N,N,N};
+    int weaponRank[9] = {N,N,N,N,N,N,N,N,N};
 
     std::vector<Item> items;
 
@@ -111,7 +111,9 @@ public:
 
     Item* getEquippedWeapon();
 
-    int getAttackSpeedWithWeapon(Item weapon);
+    int getAttackSpeedWithWeapon(WeaponStats weaponStats);
+
+    bool canUseWeapon(Item weapon);
 
     void calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* crit);
 };

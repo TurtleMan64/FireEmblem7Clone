@@ -1,6 +1,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <fstream>
@@ -83,6 +84,16 @@ int Util::clamp(int lower, int var, int higher)
     if (var < lower)  return lower;
     if (var > higher) return higher;
     return var;
+}
+
+int Util::random2()
+{
+    return (random() + random())/2;
+}
+
+int Util::random()
+{
+    return (int)(100*(((float)rand())/(RAND_MAX + 1)));
 }
 
 int Util::approach(int current, int target, float rate)
