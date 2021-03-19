@@ -30,5 +30,8 @@ private:
     static void loadFont(Font fontToLoad);
 
 public:
+    static const SDL_Color White;
+    static const SDL_Color Blue;
+    static const SDL_Color Yellow;
     static void renderText(std::string text, Font font, SDL_Color color, int x, int y, Alignment alignment, int width);
 };

@@ -15,7 +15,6 @@ private:
     static std::unordered_map<std::string, ImageAnimation*> pathToImage;
 
     std::string imagePath;
-    ImageAnimation* image = nullptr;
 
 public:
     int x = 0;
@@ -23,6 +22,7 @@ public:
     int scaleX = 1; //should only be 1 or -1
     int scaleY = 1; //should only be 1 or -1
     int imageIndex = 0;
+    ImageAnimation* image = nullptr;
 
     Sprite(std::string path, int spawnX, int spawnY, bool swapPalette);
     ~Sprite();

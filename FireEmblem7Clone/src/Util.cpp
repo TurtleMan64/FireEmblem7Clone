@@ -118,6 +118,16 @@ int Util::approach(int current, int target, float rate)
     return current;
 }
 
+int Util::mod(int val, int mod)
+{
+    val = val % mod;
+    if (val < 0)
+    {
+        val += mod;
+    }
+    return val;
+}
+
 int Util::getManhattanDistance(Unit* unit1, Unit* unit2)
 {
     int diffX = unit1->tileX - unit2->tileX;

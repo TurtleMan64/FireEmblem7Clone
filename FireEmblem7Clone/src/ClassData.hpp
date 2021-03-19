@@ -1,46 +1,85 @@
 #pragma once
 
-#include <unordered_set>
+#include <string>
+#include <unordered_map>
 
 enum ClassType
 {
-    Lord,
-    Cavalier,
-    Pegasus,
-    Archer,
-    Cleric,
-    Fighter,
-    Myrmidon,
-    Troubadour,
+    LordCaelin,
+    BladeLord,
+    LordPherae,
+    KnightLord,
+    LordOstia,
+    GreatLord,
     Mercenary,
-    Shaman,
-    Pirate,
+    Hero,
+    Myrmidon,
+    Swordmaster,
     Thief,
-    Dancer,
-    Wyvern,
-    Mage,
-    Nomad,
-    Monk,
+    Assassin,
     Knight,
-    Brigand
+    General,
+    Soldier,
+    Fighter,
+    Warrior,
+    Brigand,
+    Pirate,
+    Corsair,
+    Berserker,
+    Archer,
+    Sniper,
+    Nomad,
+    NomadTrooper,
+    Cavalier,
+    Paladin,
+    PegasusKnight,
+    FalconKnight,
+    WyvernRider,
+    WyvernLord,
+    Monk,
+    Cleric,
+    Bishop,
+    Troubadour,
+    Valkyrie,
+    Mage,
+    Sage,
+    Archsage,
+    Shaman,
+    Druid,
+    DarkDruid,
+    Bard,
+    Dancer,
+    MagicSeal,
+    Bramimond,
+    FireDragon,
+    Civilian,
+    Prince,
+    TransporterTent,
+    TransporterWagon
 };
 
 class ClassData
 {
+private:
+    static std::unordered_map<std::string, ClassType> nameToClass;
+
 public:
     class StatCaps
     {
     public:
-        int healthPoints;
-        int strength;
-        int skill;
-        int speed;
-        int luck;
-        int defense;
-        int resistance;
+        int hp;
+        int str;
+        int mag;
+        int skl;
+        int spd;
+        int lck;
+        int def;
+        int res;
     };
 
-    //class Wea
+    static void init();
 
-    static void loadClassData();
+    static std::string getClassName(ClassType type);
+
+    static ClassType getClassType(std::string name);
 };

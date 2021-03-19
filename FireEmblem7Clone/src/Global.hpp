@@ -12,6 +12,7 @@ public:
         MainMenu,
         Cutscene,
         Map,
+        UnitDisplay,
         Battle
     };
 
@@ -21,9 +22,10 @@ public:
 
     static int mapId;
     
+    static int transitionTimerMax;
     static int transitionTimer;
     static GameState transitionState;
     static int fadeInTimer;
 
-    static void transitionToNewState(GameState newState);
+    static void transitionToNewState(GameState newState, int transitionTime);
 };

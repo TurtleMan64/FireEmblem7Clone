@@ -9,6 +9,10 @@
 #include "Util.hpp"
 #include "Text.hpp"
 
+const SDL_Color Text::White {255, 255, 255, 255};
+const SDL_Color Text::Blue  {198, 255, 255, 255};
+const SDL_Color Text::Yellow{255, 247, 140, 255};
+
 SDL_Texture* Text::texFontWhite = nullptr;
 SDL_Texture* Text::texFontBlack = nullptr;
 std::unordered_map<char, SDL_Rect> Text::asciiToRectWhite;
@@ -22,13 +26,13 @@ void Text::loadFont(Font fontToLoad)
 
     switch (fontToLoad)
     {
-        case White:
+        case Font::White:
             texToLoad = &texFontWhite;
             mapToLoad = &asciiToRectWhite;
             name = "White";
             break;
 
-        case Black:
+        case Font::Black:
             texToLoad = &texFontBlack;
             mapToLoad = &asciiToRectBlack;
             name = "Black";
@@ -70,12 +74,12 @@ void Text::renderText(std::string text, Font font, SDL_Color color, int x, int y
 
     switch (font)
     {
-        case White:
+        case Font::White:
             fontTex = &texFontWhite;
             asciiToRect = &asciiToRectWhite;
             break;
 
-        case Black:
+        case Font::Black:
             fontTex = &texFontBlack;
             asciiToRect = &asciiToRectBlack;
             break;

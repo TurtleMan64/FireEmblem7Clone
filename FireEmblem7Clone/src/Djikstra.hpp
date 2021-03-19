@@ -5,7 +5,7 @@ class Unit;
 class Djikstra
 {
 private:
-    static const int MAX_MOVEMENT = 15;
+    static const int MAX_MOVEMENT = 13;
     static const int NODES_WIDTH = MAX_MOVEMENT*2 + 1;
     static const int NUM_NODES = NODES_WIDTH*NODES_WIDTH;
 

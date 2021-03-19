@@ -18,6 +18,7 @@ private:
     {
     public:
         std::string name;
+        std::string className;
         std::string mugshotPath;
         std::string mugshotTinyPath;
         std::string mapPath;
@@ -52,6 +53,7 @@ private:
 public:
     std::string displayName;
     ClassType classType;
+    std::string className;
 
     int spriteIndex = 0;
     Sprite* sprMugshot      = nullptr;

@@ -23,6 +23,12 @@ public:
 
     static int approach(int current, int target, float rate);
 
+    //for positive values, same as val % mod.
+    // for negative val, if val is still negative after %, then adds mod.
+    // so mod( -3, 10) -> 7
+    //    mod(-13, 10) -> 7
+    static int mod(int val, int mod);
+
     static int getManhattanDistance(Unit* unit1, Unit* unit2);
 
     //-1 if myWeapon is bad against other, 0 if neutral, 1 if myWeapon is good against other

@@ -17,12 +17,13 @@ Unit::UnitResources::UnitResources(std::string filePath)
 {
     std::vector<std::string> file = Util::readFile(filePath);
     name            = file[0];
-    mugshotPath     = file[1];
-    mugshotTinyPath = file[2];
-    mapPath         = file[3];
-    battlePath      = file[4];
+    className       = file[1];
+    mugshotPath     = file[2];
+    mugshotTinyPath = file[3];
+    mapPath         = file[4];
+    battlePath      = file[5];
 
-    std::vector<std::string> statGrowths = Util::split(file[5], ' ');
+    std::vector<std::string> statGrowths = Util::split(file[6], ' ');
     growthHp  = stoi(statGrowths[0]);
     growthStr = stoi(statGrowths[1]);
     growthMag = stoi(statGrowths[2]);
@@ -36,6 +37,8 @@ Unit::UnitResources::UnitResources(std::string filePath)
 Unit::Unit(std::string displayName, std::string className)
 {
     this->displayName = displayName;
+    this->className = className;
+    classType = ClassData::getClassType(className);
 
     if (unitResources.find(displayName) == unitResources.end() &&
         unitResources.find(className)   == unitResources.end())
@@ -263,16 +266,20 @@ void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* c
 
     MapTile myTile = Map::tiles[tileX + tileY*Map::tilesWidth];
     bool usesTile = true;
-    if (classType == ClassType::Pegasus ||
-        classType == ClassType::Wyvern)
+    if ((classType == ClassType::PegasusKnight) ||
+        (classType == ClassType::FalconKnight)  ||
+        (classType == ClassType::WyvernRider)   ||
+        (classType == ClassType::WyvernLord))
     {
         usesTile = false;
     }
 
     MapTile otherTile = Map::tiles[other->tileX + other->tileY*Map::tilesWidth];
     bool otherUsesTile = true;
-    if (other->classType == ClassType::Pegasus ||
-        other->classType == ClassType::Wyvern)
+    if ((other->classType == ClassType::PegasusKnight) ||
+        (other->classType == ClassType::FalconKnight)  ||
+        (other->classType == ClassType::WyvernRider)   ||
+        (other->classType == ClassType::WyvernLord))
     {
         otherUsesTile = false;
     }

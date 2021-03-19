@@ -8,6 +8,7 @@
 #include "ImageAnimation.hpp"
 #include "Map.hpp"
 #include "MainMenu.hpp"
+#include "UnitDisplay.hpp"
 
 SDL_Renderer* Global::sdlRenderer = nullptr;
 
@@ -17,6 +18,7 @@ Global::GameState Global::gameState = Title;
 
 int Global::mapId = 0;
 
+int Global::transitionTimerMax = 30;
 int Global::transitionTimer = 0;
 Global::GameState Global::transitionState = Title;
 int Global::fadeInTimer = 30;
@@ -76,7 +78,7 @@ int main()
 
             if (Global::transitionTimer == 0)
             {
-                Global::fadeInTimer = 30;
+                Global::fadeInTimer = Global::transitionTimerMax;
                 Global::gameState = Global::transitionState;
             }
         }
@@ -131,7 +133,7 @@ int main()
                 SDL_RenderCopy(Global::sdlRenderer, texTitleScreen, nullptr, nullptr);
                 if (Input::pressedStart() || Input::pressedA())
                 {
-                    Global::transitionToNewState(Global::GameState::MainMenu);
+                    Global::transitionToNewState(Global::GameState::MainMenu, 30);
                 }
                 break;
 
@@ -147,6 +149,10 @@ int main()
                 Map::step();
                 break;
 
+            case Global::UnitDisplay:
+                UnitDisplay::step();
+                break;
+
             case Global::Battle:
 
                 break;
@@ -158,13 +164,13 @@ int main()
         //Render a fadeout/fadein
         if (Global::fadeInTimer > 0)
         {
-            SDL_SetRenderDrawColor(Global::sdlRenderer, 0, 0, 0, (Uint8)(Global::fadeInTimer*8.5f));
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 0, 0, 0, (Uint8)(Global::fadeInTimer*(255.0f/Global::transitionTimerMax)));
             SDL_RenderFillRect(Global::sdlRenderer, &rectEntireScreen);
         }
 
         if (Global::transitionTimer > 0)
         {
-            SDL_SetRenderDrawColor(Global::sdlRenderer, 0, 0, 0, 255 - (Uint8)(Global::transitionTimer*8.5f));
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 0, 0, 0, 255 - (Uint8)(Global::transitionTimer*(255.0f/Global::transitionTimerMax)));
             SDL_RenderFillRect(Global::sdlRenderer, &rectEntireScreen);
         }
 
@@ -231,8 +237,9 @@ int main()
     return 0;
 }
 
-void Global::transitionToNewState(GameState newState)
+void Global::transitionToNewState(GameState newState, int transitionTime)
 {
     Global::transitionState = newState;
-    Global::transitionTimer = 30;
+    Global::transitionTimer = transitionTime;
+    Global::transitionTimerMax = transitionTime;
 }

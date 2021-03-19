@@ -89,17 +89,30 @@ int MapTile::movementLostForMovingOnThisTile(Unit* unit)
 {
     const int NOPE = 100;
 
-    bool isFlier = (unit->classType == ClassType::Pegasus) || 
-                   (unit->classType == ClassType::Wyvern);
+    bool isFlier = (unit->classType == ClassType::PegasusKnight) ||
+                   (unit->classType == ClassType::FalconKnight)  ||
+                   (unit->classType == ClassType::WyvernRider)   ||
+                   (unit->classType == ClassType::WyvernLord);
 
-    bool isHorse = (unit->classType == ClassType::Cavalier)   ||
+    bool isHorse = (unit->classType == ClassType::KnightLord) ||
+                   (unit->classType == ClassType::Cavalier)   ||
+                   (unit->classType == ClassType::Paladin)    ||
                    (unit->classType == ClassType::Troubadour) ||
-                   (unit->classType == ClassType::Nomad);
+                   (unit->classType == ClassType::Valkyrie)   ||
+                   (unit->classType == ClassType::Nomad)      ||
+                   (unit->classType == ClassType::NomadTrooper);
 
-    bool isMagic = (unit->classType == ClassType::Mage)   ||
-                   (unit->classType == ClassType::Cleric) ||
-                   (unit->classType == ClassType::Shaman) ||
-                   (unit->classType == ClassType::Monk);
+    bool isMagic = (unit->classType == ClassType::Mage)      ||
+                   (unit->classType == ClassType::Sage)      ||
+                   (unit->classType == ClassType::Cleric)    ||
+                   (unit->classType == ClassType::Monk)      ||
+                   (unit->classType == ClassType::Bishop)    ||
+                   (unit->classType == ClassType::Shaman)    ||
+                   (unit->classType == ClassType::Druid)     ||
+                   (unit->classType == ClassType::DarkDruid) ||
+                   (unit->classType == ClassType::Archsage)  ||
+                   (unit->classType == ClassType::MagicSeal) ||
+                   (unit->classType == ClassType::Bramimond);
 
     switch (type)
     {

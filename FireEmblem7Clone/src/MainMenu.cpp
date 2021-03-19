@@ -48,12 +48,12 @@ void MainMenu::step()
     }
     else if (Input::pressedA())
     {
-        Global::transitionToNewState(Global::GameState::Map);
+        Global::transitionToNewState(Global::GameState::Map, 45);
         Map::loadFresh(0);//"res/Images/Maps/Map12.png");
     }
     else if (Input::pressedB())
     {
-        Global::transitionToNewState(Global::GameState::Title);
+        Global::transitionToNewState(Global::GameState::Title, 30);
     }
 
     buttonSelectL->y = 20 + buttonIdx*24;
