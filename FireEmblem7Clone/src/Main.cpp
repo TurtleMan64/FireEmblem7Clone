@@ -8,6 +8,7 @@
 #include "ImageAnimation.hpp"
 #include "Map.hpp"
 #include "MainMenu.hpp"
+#include "ClassData.hpp"
 #include "UnitDisplay.hpp"
 
 SDL_Renderer* Global::sdlRenderer = nullptr;
@@ -38,6 +39,7 @@ int main()
 
     MainMenu::init();
     Input::init();
+    ClassData::init();
 
     //SDL_SetHintWithPriority(SDL_HINT_RENDER_VSYNC, "0", SDL_HINT_OVERRIDE);
     //SDL_GL_SetSwapInterval(0);

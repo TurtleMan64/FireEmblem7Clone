@@ -52,6 +52,14 @@ Sprite::~Sprite()
     }
 }
 
+void Sprite::render(int newX, int newY, int newImageIndex)
+{
+    x = newX;
+    y = newY;
+    imageIndex = newImageIndex;
+    render();
+}
+
 void Sprite::render()
 {
     SDL_Rect rect;

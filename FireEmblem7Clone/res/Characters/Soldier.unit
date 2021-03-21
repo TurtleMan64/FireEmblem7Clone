@@ -1,7 +1,4 @@
 Soldier
-Soldier
-res/Images/Sprites/Characters/GenericSoldier/Mugshot
-res/Images/Sprites/Characters/GenericSoldier/MugshotTiny
-res/Images/Sprites/Classes/Soldier/Map
-res/Images/Sprites/Classes/Soldier/Battle
+GENERIC_CLASS_MUGSHOT
+GENERIC_ENEMY_MUGSHOT_TINY
 0 0 0 0 0 0 0 0

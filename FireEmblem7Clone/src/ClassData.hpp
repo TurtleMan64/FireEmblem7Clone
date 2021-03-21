@@ -12,9 +12,12 @@ enum ClassType
     LordOstia,
     GreatLord,
     Mercenary,
-    Hero,
-    Myrmidon,
-    Swordmaster,
+    HeroF,
+    HeroM,
+    MyrmidonF,
+    MyrmidonM,
+    SwordmasterF,
+    SwordmasterM,
     Thief,
     Assassin,
     Knight,
@@ -26,10 +29,14 @@ enum ClassType
     Pirate,
     Corsair,
     Berserker,
-    Archer,
-    Sniper,
-    Nomad,
-    NomadTrooper,
+    ArcherF,
+    ArcherM,
+    SniperF,
+    SniperM,
+    NomadF,
+    NomadM,
+    NomadTrooperF,
+    NomadTrooperM,
     Cavalier,
     Paladin,
     PegasusKnight,
@@ -38,48 +45,84 @@ enum ClassType
     WyvernLord,
     Monk,
     Cleric,
-    Bishop,
+    BishopF,
+    BishopM,
     Troubadour,
     Valkyrie,
-    Mage,
-    Sage,
+    MageF,
+    MageM,
+    SageF,
+    SageM,
     Archsage,
-    Shaman,
-    Druid,
+    ShamanF,
+    ShamanM,
+    DruidF,
+    DruidM,
     DarkDruid,
     Bard,
     Dancer,
     MagicSeal,
     Bramimond,
     FireDragon,
-    Civilian,
+    Man,
     Prince,
     TransporterTent,
     TransporterWagon
 };
 
+class ClassResources
+{
+public:
+    ClassType classType;
+    std::string displayName;
+
+    std::string mapSpritesPath;
+    std::string battleSpritesPath;
+    std::string genericMugshotPath;
+    std::string genericMugshotTinyPath;
+
+    int capHp;
+    int capStr;
+    int capMag;
+    int capSkl;
+    int capSpd;
+    int capLck;
+    int capDef;
+    int capRes;
+    int capCon;
+    int capMov;
+
+    int promoHp;
+    int promoStr;
+    int promoMag;
+    int promoSkl;
+    int promoSpd;
+    int promoLck;
+    int promoDef;
+    int promoRes;
+    int promoCon;
+    int promoMov;
+
+    int promoSword;
+    int promoLance;
+    int promoAxe;
+    int promoBow;
+    int promoAnima;
+    int promoLight;
+    int promoDark;
+    int promoStaff;
+
+    ClassResources();
+    ClassResources(std::string internalName, ClassType type);
+};
+
 class ClassData
 {
 private:
-    static std::unordered_map<std::string, ClassType> nameToClass;
+    static std::unordered_map<std::string, ClassResources> nameToClassResources;
 
 public:
-    class StatCaps
-    {
-    public:
-        int hp;
-        int str;
-        int mag;
-        int skl;
-        int spd;
-        int lck;
-        int def;
-        int res;
-    };
-
     static void init();
 
-    static std::string getClassName(ClassType type);
-
-    static ClassType getClassType(std::string name);
+    static ClassResources getClassResources(std::string internalName);
 };

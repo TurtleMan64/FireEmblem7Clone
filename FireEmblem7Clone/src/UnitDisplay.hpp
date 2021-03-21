@@ -1,7 +1,10 @@
 #pragma once
 
 #include <SDL/SDL.h>
+#include <string>
 
+#include "Unit.hpp"
+#include "Weapons.hpp"
 #include "Sprite.hpp"
 
 class UnitDisplay
@@ -20,16 +23,18 @@ private:
     static Sprite* backdropMugshot;
     static Sprite* backdropBattles;
     static Sprite* barPieces;
+    static Sprite* weaponIcons;
 
     static int renderOffsetTarget;
     static int renderOffset;
 
-    static void renderMugshot(Unit* unit);
-    static void renderMini(Unit* unit);
+    static void renderMugshot(Unit* unit, bool isEnemy);
+    static void renderMini(Unit* unit, bool isEnemy);
     static void renderPagePersonalData(Unit* unit, int x, int y);
     static void renderPageItems(Unit* unit, int x, int y);
     static void renderPageWeaponLevels(Unit* unit, int x, int y);
     static void renderBar(int x, int y, int width, float progress);
+    static std::string calcWeaponProgress(Unit* unit, WeaponType weapon, float* outProgress);
 
 public:
     static void step();

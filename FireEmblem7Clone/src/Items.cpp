@@ -14,6 +14,8 @@ SDL_Texture* Item::itemsTex = nullptr;
 Item::Item(ItemId id)
 {
     this->id = id;
+    WeaponStats stats = getWeaponStats();
+    usesRemaining = stats.usesMax;
 
     if (itemsTex == nullptr)
     {
@@ -108,14 +110,14 @@ void Item::consume(Unit* unit)
     {
         case AfasDrops:
         {
-            unit->growthHp  += 5;
-            unit->growthStr += 5;
-            unit->growthMag += 5;
-            unit->growthSkl += 5;
-            unit->growthSpd += 5;
-            unit->growthLck += 5;
-            unit->growthDef += 5;
-            unit->growthRes += 5;
+            unit->unitResources.growthHp  += 5;
+            unit->unitResources.growthStr += 5;
+            unit->unitResources.growthMag += 5;
+            unit->unitResources.growthSkl += 5;
+            unit->unitResources.growthSpd += 5;
+            unit->unitResources.growthLck += 5;
+            unit->unitResources.growthDef += 5;
+            unit->unitResources.growthRes += 5;
             return;
         }
 

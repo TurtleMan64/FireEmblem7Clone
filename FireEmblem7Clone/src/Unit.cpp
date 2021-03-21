@@ -12,18 +12,15 @@
 #include "Map.hpp"
 #include "Unit.hpp"
 
-Unit::UnitResources::UnitResources() {}
-Unit::UnitResources::UnitResources(std::string filePath)
+UnitResources::UnitResources() {}
+UnitResources::UnitResources(std::string filePath)
 {
     std::vector<std::string> file = Util::readFile(filePath);
-    name            = file[0];
-    className       = file[1];
-    mugshotPath     = file[2];
-    mugshotTinyPath = file[3];
-    mapPath         = file[4];
-    battlePath      = file[5];
+    displayName     = file[0];
+    mugshotPath     = file[1];
+    mugshotTinyPath = file[2];
 
-    std::vector<std::string> statGrowths = Util::split(file[6], ' ');
+    std::vector<std::string> statGrowths = Util::split(file[3], ' ');
     growthHp  = stoi(statGrowths[0]);
     growthStr = stoi(statGrowths[1]);
     growthMag = stoi(statGrowths[2]);
@@ -34,56 +31,57 @@ Unit::UnitResources::UnitResources(std::string filePath)
     growthRes = stoi(statGrowths[7]);
 }
 
-Unit::Unit(std::string displayName, std::string className)
+Unit::Unit(std::string unitName, std::string className)
 {
-    this->displayName = displayName;
-    this->className = className;
-    classType = ClassData::getClassType(className);
-
-    if (unitResources.find(displayName) == unitResources.end() &&
-        unitResources.find(className)   == unitResources.end())
+    if (unitNameToResources.find(unitName) == unitNameToResources.end())
     {
-        std::string displayNameFile = "res/Characters/" + displayName + ".unit";
-        std::string classNameFile   = "res/Characters/" + className   + ".unit";
+        std::string displayNameFile = "res/Characters/" + unitName + ".unit";
         if (Util::fileExists(displayNameFile))
         {
             UnitResources resources = UnitResources(displayNameFile);
-            unitResources[displayName] = resources;
-        }
-        else if (Util::fileExists(classNameFile))
-        {
-            UnitResources resources = UnitResources(classNameFile);
-            unitResources[className] = resources;
+            unitNameToResources[unitName] = resources;
         }
         else
         {
-            printf("Error: Cannot find unit data for unit %s or class %s\n", displayName.c_str(), className.c_str());
+            printf("Error: Cannot find unit data for unit %s\n", unitName.c_str());
         }
     }
 
-    UnitResources resources;
-    if (unitResources.find(displayName) != unitResources.end())
+    if (unitNameToResources.find(unitName) != unitNameToResources.end())
     {
-        resources = unitResources[displayName];
+        unitResources = unitNameToResources[unitName];
+    }
+
+    classResources = ClassData::getClassResources(className);
+
+    sprMapIdleB     = new Sprite(classResources.mapSpritesPath + "/Idle",    0, 0, false);
+    sprMapHuzzahB   = new Sprite(classResources.mapSpritesPath + "/Huzzah",  0, 0, false);
+    sprMapRunUpB    = new Sprite(classResources.mapSpritesPath + "/RunUp",   0, 0, false);
+    sprMapRunDownB  = new Sprite(classResources.mapSpritesPath + "/RunDown", 0, 0, false);
+    sprMapRunLeftB  = new Sprite(classResources.mapSpritesPath + "/RunLeft", 0, 0, false);
+    sprMapIdleR     = new Sprite(classResources.mapSpritesPath + "/Idle",    0, 0, true);
+    sprMapHuzzahR   = new Sprite(classResources.mapSpritesPath + "/Huzzah",  0, 0, true);
+    sprMapRunUpR    = new Sprite(classResources.mapSpritesPath + "/RunUp",   0, 0, true);
+    sprMapRunDownR  = new Sprite(classResources.mapSpritesPath + "/RunDown", 0, 0, true);
+    sprMapRunLeftR  = new Sprite(classResources.mapSpritesPath + "/RunLeft", 0, 0, true);
+
+    if (unitResources.mugshotPath == "GENERIC_CLASS_MUGSHOT")
+    {
+        sprMugshot = new Sprite(classResources.genericMugshotPath, 0, 0, false);
     }
     else
     {
-        resources = unitResources[className];
+        sprMugshot = new Sprite(unitResources.mugshotPath, 0, 0, false);
     }
-    sprMapIdleB     = new Sprite(resources.mapPath + "/Idle",    0, 0, false);
-    sprMapHuzzahB   = new Sprite(resources.mapPath + "/Huzzah",  0, 0, false);
-    sprMapRunUpB    = new Sprite(resources.mapPath + "/RunUp",   0, 0, false);
-    sprMapRunDownB  = new Sprite(resources.mapPath + "/RunDown", 0, 0, false);
-    sprMapRunLeftB  = new Sprite(resources.mapPath + "/RunLeft", 0, 0, false);
-    sprMapIdleR     = new Sprite(resources.mapPath + "/Idle",    0, 0, true);
-    sprMapHuzzahR   = new Sprite(resources.mapPath + "/Huzzah",  0, 0, true);
-    sprMapRunUpR    = new Sprite(resources.mapPath + "/RunUp",   0, 0, true);
-    sprMapRunDownR  = new Sprite(resources.mapPath + "/RunDown", 0, 0, true);
-    sprMapRunLeftR  = new Sprite(resources.mapPath + "/RunLeft", 0, 0, true);
-    sprMugshot      = new Sprite(resources.mugshotPath,          0, 0, false);
-    sprMugshotTiny  = new Sprite(resources.mugshotTinyPath,      0, 0, false);
 
-    mov = 9;
+    if (unitResources.mugshotTinyPath == "GENERIC_ENEMY_MUGSHOT_TINY")
+    {
+        sprMugshotTiny = new Sprite(classResources.genericMugshotTinyPath, 0, 0, false);
+    }
+    else
+    {
+        sprMugshotTiny = new Sprite(unitResources.mugshotTinyPath, 0, 0, false);
+    }
 }
 
 Unit::~Unit()
@@ -266,20 +264,20 @@ void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* c
 
     MapTile myTile = Map::tiles[tileX + tileY*Map::tilesWidth];
     bool usesTile = true;
-    if ((classType == ClassType::PegasusKnight) ||
-        (classType == ClassType::FalconKnight)  ||
-        (classType == ClassType::WyvernRider)   ||
-        (classType == ClassType::WyvernLord))
+    if ((classResources.classType == ClassType::PegasusKnight) ||
+        (classResources.classType == ClassType::FalconKnight)  ||
+        (classResources.classType == ClassType::WyvernRider)   ||
+        (classResources.classType == ClassType::WyvernLord))
     {
         usesTile = false;
     }
 
     MapTile otherTile = Map::tiles[other->tileX + other->tileY*Map::tilesWidth];
     bool otherUsesTile = true;
-    if ((other->classType == ClassType::PegasusKnight) ||
-        (other->classType == ClassType::FalconKnight)  ||
-        (other->classType == ClassType::WyvernRider)   ||
-        (other->classType == ClassType::WyvernLord))
+    if ((other->classResources.classType == ClassType::PegasusKnight) ||
+        (other->classResources.classType == ClassType::FalconKnight)  ||
+        (other->classResources.classType == ClassType::WyvernRider)   ||
+        (other->classResources.classType == ClassType::WyvernLord))
     {
         otherUsesTile = false;
     }

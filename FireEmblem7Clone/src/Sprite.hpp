@@ -29,5 +29,7 @@ public:
 
     void render();
 
+    void render(int x, int y, int imageIndex);
+
     void render(SDL_Color color);
 };

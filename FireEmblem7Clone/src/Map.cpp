@@ -1880,7 +1880,7 @@ void Map::renderUnitDecription()
         hudUnitDescriptorSprite->y = dispY;
         hudUnitDescriptorSprite->render();
 
-        Text::renderText(unitToDisplay->displayName, Font::Black, Text::White, 40, dispY + 8, Center, 48);
+        Text::renderText(unitToDisplay->unitResources.displayName, Font::Black, Text::White, 40, dispY + 8, Center, 48);
 
         hudStatTexts->x = 40;
         hudStatTexts->y = dispY + 24;
@@ -1978,6 +1978,7 @@ void Map::renderItemWeaponStatsWindow()
 {
     selectedUnit->sprMugshot->x = 8*16;
     selectedUnit->sprMugshot->y = 16;
+    selectedUnit->sprMugshot->scaleX = 1;
     selectedUnit->sprMugshot->imageIndex++;
     selectedUnit->sprMugshot->render();
 
@@ -2024,10 +2025,10 @@ void Map::renderItemWeaponStatsWindow()
     //Avoid calculation
     int supportBonusAvoid = 0;
     int terrainBonusAvoid = tile.avoid;
-    if (selectedUnit->classType == ClassType::PegasusKnight ||
-        selectedUnit->classType == ClassType::FalconKnight  ||
-        selectedUnit->classType == ClassType::WyvernRider   ||
-        selectedUnit->classType == ClassType::WyvernLord)
+    if (selectedUnit->classResources.classType == ClassType::PegasusKnight ||
+        selectedUnit->classResources.classType == ClassType::FalconKnight  ||
+        selectedUnit->classResources.classType == ClassType::WyvernRider   ||
+        selectedUnit->classResources.classType == ClassType::WyvernLord)
     {
         terrainBonusAvoid = 0;
     }
@@ -2156,8 +2157,8 @@ void Map::renderAttackPreview()
             attackPreviewBackdrop->y = baseY;
             attackPreviewBackdrop->render();
 
-            Text::renderText(selectedUnit ->displayName, Font::White, Text::White, baseX + 26, baseY +  9, Center, 42);
-            Text::renderText(enemyOnCursor->displayName, Font::White, Text::White, baseX + 10, baseY + 89, Center, 42);
+            Text::renderText(selectedUnit ->unitResources.displayName, Font::White, Text::White, baseX + 26, baseY +  9, Center, 42);
+            Text::renderText(enemyOnCursor->unitResources.displayName, Font::White, Text::White, baseX + 10, baseY + 89, Center, 42);
 
             int myAttackSpeed = selectedUnit->spd;
             Item* myWeapon = selectedUnit->getEquippedWeapon();

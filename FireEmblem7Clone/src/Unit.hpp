@@ -11,32 +11,30 @@
 
 class Sprite;
 
+class UnitResources
+{
+public:
+    std::string displayName;
+    std::string mugshotPath;
+    std::string mugshotTinyPath;
+
+    int growthHp  = 0;
+    int growthStr = 0;
+    int growthMag = 0;
+    int growthSkl = 0;
+    int growthSpd = 0;
+    int growthLck = 0;
+    int growthDef = 0;
+    int growthRes = 0;
+
+    UnitResources();
+    UnitResources(std::string filePath);
+};
+
 class Unit
 {
 private:
-    class UnitResources
-    {
-    public:
-        std::string name;
-        std::string className;
-        std::string mugshotPath;
-        std::string mugshotTinyPath;
-        std::string mapPath;
-        std::string battlePath;
-        int growthHp  = 0;
-        int growthStr = 0;
-        int growthMag = 0;
-        int growthSkl = 0;
-        int growthSpd = 0;
-        int growthLck = 0;
-        int growthDef = 0;
-        int growthRes = 0;
-
-        UnitResources();
-        UnitResources(std::string filePath);
-    };
-
-    std::unordered_map<std::string, UnitResources> unitResources;
+    std::unordered_map<std::string, UnitResources> unitNameToResources;
 
     Sprite* sprMapIdleB     = nullptr;
     Sprite* sprMapHuzzahB   = nullptr;
@@ -51,9 +49,8 @@ private:
     Sprite* sprMapRunLeftR  = nullptr;
 
 public:
-    std::string displayName;
-    ClassType classType;
-    std::string className;
+    UnitResources unitResources;
+    ClassResources classResources;
 
     int spriteIndex = 0;
     Sprite* sprMugshot      = nullptr;
@@ -87,22 +84,13 @@ public:
     int con = 0;
     int aid = 0;
 
-    int growthHp  = 0;
-    int growthStr = 0;
-    int growthMag = 0;
-    int growthSkl = 0;
-    int growthSpd = 0;
-    int growthLck = 0;
-    int growthDef = 0;
-    int growthRes = 0;
-
     int weaponRank[9] = {N,N,N,N,N,N,N,N,N};
 
     std::vector<Item> items;
 
     Unit* rescuedUnit = nullptr;
 
-    Unit(std::string displayName, std::string className);
+    Unit(std::string unitName, std::string className);
     ~Unit();
 
     void render(int x, int y, int spriteIndex, int viewportPixelOffsetX, int viewportPixelOffsetY);

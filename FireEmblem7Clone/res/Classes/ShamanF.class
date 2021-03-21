@@ -1,0 +1,48 @@
+#Name
+Shaman
+
+#Map Sprites Path
+res/Images/Sprites/Classes/ShamanF/Map
+
+#Battle Sprites Path
+res/Images/Sprites/Classes/ShamanF/Battle
+
+#Generic Mugshot Sprite Path
+res/Images/Sprites/Classes/Generic/Mugshots/Shaman
+
+#Generic Tiny Mugshot Sprite Path
+res/Images/Sprites/Classes/Generic/MugshotTiny
+
+#Stat Caps
+HP:  60
+STR: 20
+MAG: 20
+SKL: 20
+SPD: 20
+LCK: 30
+DEF: 20
+RES: 20
+CON: 20
+MOV: 13
+
+#Promotion Stat Gains
+HP:  0
+STR: 0
+MAG: 0
+SKL: 0
+SPD: 0
+LCK: 0
+DEF: 0
+RES: 0
+CON: 0
+MOV: 0
+
+#Promotion Weapon Exp
+SWORD: 0
+LANCE: 0
+AXE:   0
+BOW:   0
+ANIMA: 0
+LIGHT: 0
+DARK:  0
+STAFF: 0

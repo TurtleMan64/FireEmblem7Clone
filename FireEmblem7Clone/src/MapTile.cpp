@@ -89,30 +89,37 @@ int MapTile::movementLostForMovingOnThisTile(Unit* unit)
 {
     const int NOPE = 100;
 
-    bool isFlier = (unit->classType == ClassType::PegasusKnight) ||
-                   (unit->classType == ClassType::FalconKnight)  ||
-                   (unit->classType == ClassType::WyvernRider)   ||
-                   (unit->classType == ClassType::WyvernLord);
+    bool isFlier = (unit->classResources.classType == ClassType::PegasusKnight) ||
+                   (unit->classResources.classType == ClassType::FalconKnight)  ||
+                   (unit->classResources.classType == ClassType::WyvernRider)   ||
+                   (unit->classResources.classType == ClassType::WyvernLord);
 
-    bool isHorse = (unit->classType == ClassType::KnightLord) ||
-                   (unit->classType == ClassType::Cavalier)   ||
-                   (unit->classType == ClassType::Paladin)    ||
-                   (unit->classType == ClassType::Troubadour) ||
-                   (unit->classType == ClassType::Valkyrie)   ||
-                   (unit->classType == ClassType::Nomad)      ||
-                   (unit->classType == ClassType::NomadTrooper);
+    bool isHorse = (unit->classResources.classType == ClassType::KnightLord)    ||
+                   (unit->classResources.classType == ClassType::Cavalier)      ||
+                   (unit->classResources.classType == ClassType::Paladin)       ||
+                   (unit->classResources.classType == ClassType::Troubadour)    ||
+                   (unit->classResources.classType == ClassType::Valkyrie)      ||
+                   (unit->classResources.classType == ClassType::NomadF)        ||
+                   (unit->classResources.classType == ClassType::NomadM)        ||
+                   (unit->classResources.classType == ClassType::NomadTrooperF) ||
+                   (unit->classResources.classType == ClassType::NomadTrooperM);
 
-    bool isMagic = (unit->classType == ClassType::Mage)      ||
-                   (unit->classType == ClassType::Sage)      ||
-                   (unit->classType == ClassType::Cleric)    ||
-                   (unit->classType == ClassType::Monk)      ||
-                   (unit->classType == ClassType::Bishop)    ||
-                   (unit->classType == ClassType::Shaman)    ||
-                   (unit->classType == ClassType::Druid)     ||
-                   (unit->classType == ClassType::DarkDruid) ||
-                   (unit->classType == ClassType::Archsage)  ||
-                   (unit->classType == ClassType::MagicSeal) ||
-                   (unit->classType == ClassType::Bramimond);
+    bool isMagic = (unit->classResources.classType == ClassType::MageF)     ||
+                   (unit->classResources.classType == ClassType::MageM)     ||
+                   (unit->classResources.classType == ClassType::SageF)     ||
+                   (unit->classResources.classType == ClassType::SageM)     ||
+                   (unit->classResources.classType == ClassType::Cleric)    ||
+                   (unit->classResources.classType == ClassType::Monk)      ||
+                   (unit->classResources.classType == ClassType::BishopF)   ||
+                   (unit->classResources.classType == ClassType::BishopM)   ||
+                   (unit->classResources.classType == ClassType::ShamanF)   ||
+                   (unit->classResources.classType == ClassType::ShamanM)   ||
+                   (unit->classResources.classType == ClassType::DruidF)    ||
+                   (unit->classResources.classType == ClassType::DruidM)    ||
+                   (unit->classResources.classType == ClassType::DarkDruid) ||
+                   (unit->classResources.classType == ClassType::Archsage)  ||
+                   (unit->classResources.classType == ClassType::MagicSeal) ||
+                   (unit->classResources.classType == ClassType::Bramimond);
 
     switch (type)
     {
