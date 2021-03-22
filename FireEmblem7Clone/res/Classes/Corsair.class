@@ -2,10 +2,10 @@
 Corsair
 
 #Map Sprites Path
-res/Images/Sprites/Classes/Corsair/Map
+res/Images/Sprites/Classes/Pirate/Map
 
 #Battle Sprites Path
-res/Images/Sprites/Classes/Corsair/Battle
+res/Images/Sprites/Classes/Pirate/Battle
 
 #Generic Mugshot Sprite Path
 res/Images/Sprites/Classes/Generic/Mugshots/Pirate

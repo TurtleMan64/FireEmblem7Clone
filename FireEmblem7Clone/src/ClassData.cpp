@@ -67,7 +67,8 @@ void ClassData::init()
     nameToClassResources.insert({"MyrmidonM"       , ClassResources("MyrmidonM"       , MyrmidonM       )});
     nameToClassResources.insert({"SwordmasterF"    , ClassResources("SwordmasterF"    , SwordmasterF    )});
     nameToClassResources.insert({"SwordmasterM"    , ClassResources("SwordmasterM"    , SwordmasterM    )});
-    nameToClassResources.insert({"Thief"           , ClassResources("Thief"           , Thief           )});
+    nameToClassResources.insert({"ThiefF"          , ClassResources("ThiefF"          , ThiefF          )});
+    nameToClassResources.insert({"ThiefM"          , ClassResources("ThiefM"          , ThiefM          )});
     nameToClassResources.insert({"Assassin"        , ClassResources("Assassin"        , Assassin        )});
     nameToClassResources.insert({"Knight"          , ClassResources("Knight"          , Knight          )});
     nameToClassResources.insert({"General"         , ClassResources("General"         , General         )});
