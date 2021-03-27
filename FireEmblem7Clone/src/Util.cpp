@@ -64,6 +64,12 @@ SDL_Texture* Util::loadRedImage(std::string path)
                 g = 208;
                 b = 48;
             }
+            else if (r == 144 && g == 184 && b == 232)
+            {
+                r = 192;
+                g = 168;
+                b = 184;
+            }
 
             g = g <<  8;
             b = b << 16;

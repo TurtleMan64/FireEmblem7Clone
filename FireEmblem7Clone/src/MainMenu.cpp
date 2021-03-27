@@ -49,7 +49,7 @@ void MainMenu::step()
     else if (Input::pressedA())
     {
         Global::transitionToNewState(Global::GameState::Map, 45);
-        Map::loadFresh(13);//"res/Images/Maps/Map12.png");
+        Map::loadFresh(12);//"res/Images/Maps/Map12.png");
     }
     else if (Input::pressedB())
     {

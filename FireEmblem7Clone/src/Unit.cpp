@@ -246,7 +246,6 @@ void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* c
 
     if (range.find(distanceToOther) == range.end())
     {
-        printf("Weapon not in range\n");
         *damage = 0;
         *hit = 0;
         *crit = 0;
@@ -356,4 +355,96 @@ void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* c
 
     int finalCrit = Util::clamp(0, myCrit - otherCritEvade, 100);
     *crit = finalCrit;
+}
+
+//Basically the same as above, but without other unit
+void Unit::calculateBaseCombatStats(int* attack, int* hit, int* avoid, int* crit, int* attackSpeed)
+{
+    MapTile myTile = Map::tiles[tileX + tileY*Map::tilesWidth];
+    bool usesTile = true;
+    if ((classResources.classType == ClassType::PegasusKnight) ||
+        (classResources.classType == ClassType::FalconKnight)  ||
+        (classResources.classType == ClassType::WyvernRider)   ||
+        (classResources.classType == ClassType::WyvernLord))
+    {
+        usesTile = false;
+    }
+
+    Item* myWeapon = getEquippedWeapon();
+    if (myWeapon == nullptr)
+    {
+        *attack = 0;
+        *hit = 0;
+        *crit = 0;
+        *attackSpeed = spd;
+
+        //Avoid calc
+        int supportBonusAvoid = 0;
+        int tacticanBonusAvoid = 0;
+        int terrainBonusAvoid = myTile.avoid;
+        if (!usesTile)
+        {
+            terrainBonusAvoid = 0;
+        }
+        *avoid = spd*2 + lck + supportBonusAvoid + terrainBonusAvoid + tacticanBonusAvoid;
+    }
+    else
+    {
+        WeaponStats myWeaponStats = myWeapon->getWeaponStats();
+
+        //Attack
+        int supportBonusAttack = 0;
+        bool isMagicWeapon = 
+            (myWeaponStats.type == Anima ||
+             myWeaponStats.type == Light ||
+             myWeaponStats.type == Dark);
+
+        int damage = myWeaponStats.might + supportBonusAttack;
+        if (!isMagicWeapon)
+        {
+            damage += str;
+        }
+        else
+        {
+            damage += mag;
+        }
+        *attack = damage;
+
+
+        //Hit
+        int supportBonusHit = 0;
+        int tacticanBonusHit = 0;
+        int sRankBonusHit = 0;
+        if (weaponRank[myWeaponStats.type] >= S)
+        {
+            sRankBonusHit = 5;
+        }
+        *hit = myWeaponStats.hit + skl*2 + lck/2 + supportBonusHit + sRankBonusHit + tacticanBonusHit;
+
+
+        //Attack Speed
+        *attackSpeed = getAttackSpeedWithWeapon(myWeaponStats);
+
+
+        //Avoid
+        int supportBonusAvoid = 0;
+        int tacticanBonusAvoid = 0;
+        int terrainBonusAvoid = myTile.avoid;
+        if (!usesTile)
+        {
+            terrainBonusAvoid = 0;
+        }
+        *avoid = (*attackSpeed)*2 + lck + supportBonusAvoid + terrainBonusAvoid + tacticanBonusAvoid;
+
+
+        //Crit
+        int supportBonusCrit = 0;
+        int criticalBonus = 0;
+        int sRankBonusCrit = 0;
+        if (weaponRank[myWeaponStats.type] >= S)
+        {
+            sRankBonusCrit = 5;
+        }
+        *crit = myWeaponStats.crit + skl/2 + supportBonusCrit + criticalBonus + sRankBonusCrit;
+    }
 }

@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <math.h>
 
 #include "Global.hpp"
 #include "Util.hpp"
@@ -12,11 +13,12 @@
 const SDL_Color Text::White {255, 255, 255, 255};
 const SDL_Color Text::Blue  {198, 255, 255, 255};
 const SDL_Color Text::Yellow{255, 247, 140, 255};
+      SDL_Color Text::Green { 74, 239,  33, 255};
 
-SDL_Texture* Text::texFontWhite = nullptr;
-SDL_Texture* Text::texFontBlack = nullptr;
-std::unordered_map<char, SDL_Rect> Text::asciiToRectWhite;
-std::unordered_map<char, SDL_Rect> Text::asciiToRectBlack;
+SDL_Texture* Text::texFontSlim     = nullptr;
+SDL_Texture* Text::texFontSlimDark = nullptr;
+std::unordered_map<char, SDL_Rect> Text::asciiToRectSlim;
+std::unordered_map<char, SDL_Rect> Text::asciiToRectSlimDark;
 
 void Text::loadFont(Font fontToLoad)
 {
@@ -26,16 +28,16 @@ void Text::loadFont(Font fontToLoad)
 
     switch (fontToLoad)
     {
-        case Font::White:
-            texToLoad = &texFontWhite;
-            mapToLoad = &asciiToRectWhite;
-            name = "White";
+        case Font::Slim:
+            texToLoad = &texFontSlim;
+            mapToLoad = &asciiToRectSlim;
+            name = "Slim";
             break;
 
-        case Font::Black:
-            texToLoad = &texFontBlack;
-            mapToLoad = &asciiToRectBlack;
-            name = "Black";
+        case Font::SlimDark:
+            texToLoad = &texFontSlimDark;
+            mapToLoad = &asciiToRectSlimDark;
+            name = "SlimDark";
             break;
 
         default:
@@ -74,14 +76,14 @@ void Text::renderText(std::string text, Font font, SDL_Color color, int x, int y
 
     switch (font)
     {
-        case Font::White:
-            fontTex = &texFontWhite;
-            asciiToRect = &asciiToRectWhite;
+        case Font::Slim:
+            fontTex = &texFontSlim;
+            asciiToRect = &asciiToRectSlim;
             break;
 
-        case Font::Black:
-            fontTex = &texFontBlack;
-            asciiToRect = &asciiToRectBlack;
+        case Font::SlimDark:
+            fontTex = &texFontSlimDark;
+            asciiToRect = &asciiToRectSlimDark;
             break;
 
         default:
@@ -136,4 +138,17 @@ void Text::renderText(std::string text, Font font, SDL_Color color, int x, int y
         SDL_SetTextureAlphaMod((*fontTex), color.a);
         SDL_RenderCopy(Global::sdlRenderer, (*fontTex), &srcRect, &dstRect);
     }
+}
+
+void Text::updateGreen()
+{
+    SDL_Color D = { 74, 239,  33, 255}; //dark  74, 239,  33, 255
+    SDL_Color L = {198, 255, 173, 255}; //light 247, 255, 231, 255
+    float t = Global::frameCount/10.0f;
+    float amp = 0.5f + 0.5f*sinf(t);
+
+    SDL_Color diff = {(Uint8)(L.r - D.r), (Uint8)(L.g - D.g), (Uint8)(L.b - D.b), (Uint8)255};
+    SDL_Color toAdd = {(Uint8)(diff.r*amp), (Uint8)(diff.g*amp), (Uint8)(diff.b*amp), (Uint8)255};
+
+    Green = {(Uint8)(D.r + toAdd.r), (Uint8)(D.g + toAdd.g), (Uint8)(D.b + toAdd.b), (Uint8)255};
 }

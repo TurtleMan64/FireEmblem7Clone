@@ -24,6 +24,7 @@ private:
     static Sprite* backdropBattles;
     static Sprite* barPieces;
     static Sprite* weaponIcons;
+    static Sprite* backdropEquipment;
 
     static int renderOffsetTarget;
     static int renderOffset;
@@ -34,7 +35,7 @@ private:
     static void renderPageItems(Unit* unit, int x, int y);
     static void renderPageWeaponLevels(Unit* unit, int x, int y);
     static void renderBar(int x, int y, int width, float progress);
-    static std::string calcWeaponProgress(Unit* unit, WeaponType weapon, float* outProgress);
+    static std::string calcWeaponProgress(Unit* unit, WeaponType weapon, float* outProgress, SDL_Color* color);
 
 public:
     static void step();

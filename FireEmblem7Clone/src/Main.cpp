@@ -10,6 +10,7 @@
 #include "MainMenu.hpp"
 #include "ClassData.hpp"
 #include "UnitDisplay.hpp"
+#include "Text.hpp"
 
 SDL_Renderer* Global::sdlRenderer = nullptr;
 
@@ -128,6 +129,8 @@ int main()
 
         SDL_SetRenderTarget(Global::sdlRenderer, mainRenderTexture); //render to the GBA sized texture
         SDL_RenderClear(Global::sdlRenderer);
+
+        Text::updateGreen();
 
         switch (Global::gameState)
         {

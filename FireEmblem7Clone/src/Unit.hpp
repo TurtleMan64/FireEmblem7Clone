@@ -106,4 +106,6 @@ public:
     bool canUseWeapon(Item weapon);
 
     void calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* crit);
+
+    void calculateBaseCombatStats(int* attack, int* hit, int* avoid, int* crit, int* attackSpeed);
 };

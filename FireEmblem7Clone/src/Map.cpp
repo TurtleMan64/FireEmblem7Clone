@@ -1741,7 +1741,7 @@ void Map::renderMainMenu()
 
     for (int i = 0; i < menuChoices.size(); i++)
     {
-        Text::renderText(menuChoices[i], Font::White, Text::White, windowBoxX + 6, 24 + i*16, Left, 0);
+        Text::renderText(menuChoices[i], Font::Slim, Text::White, windowBoxX + 6, 24 + i*16, Left, 0);
     }
 }
 
@@ -1806,8 +1806,8 @@ void Map::renderObjective()
     }
 
     hudObjectiveSprite->render();
-    Text::renderText(line1, Font::White, Text::White, hudObjectiveSprite->x + 14, dispY +  8, Center, 76);
-    Text::renderText(line2, Font::White, Text::White, hudObjectiveSprite->x + 14, dispY + 24, Center, 76);
+    Text::renderText(line1, Font::Slim, Text::White, hudObjectiveSprite->x + 14, dispY +  8, Center, 76);
+    Text::renderText(line2, Font::Slim, Text::White, hudObjectiveSprite->x + 14, dispY + 24, Center, 76);
 }
 
 void Map::renderTileDescription()
@@ -1841,10 +1841,10 @@ void Map::renderTileDescription()
     hudStatTexts->render();
 
     MapTile tile = tiles[cursorX + tilesWidth*cursorY];
-    Text::renderText(tile.name, Font::White, Text::White, dispX + 8, 160 - 40, Center, 32);
+    Text::renderText(tile.name, Font::Slim, Text::White, dispX + 8, 160 - 40, Center, 32);
 
-    Text::renderText(std::to_string(tile.defense), Font::Black, Text::White, dispX + 24, 160 - 28, Right, 16);
-    Text::renderText(std::to_string(tile.avoid),   Font::Black, Text::White, dispX + 24, 160 - 20, Right, 16);
+    Text::renderText(std::to_string(tile.defense), Font::SlimDark, Text::White, dispX + 24, 160 - 28, Right, 16);
+    Text::renderText(std::to_string(tile.avoid),   Font::SlimDark, Text::White, dispX + 24, 160 - 20, Right, 16);
 }
 
 void Map::renderUnitDecription()
@@ -1880,7 +1880,7 @@ void Map::renderUnitDecription()
         hudUnitDescriptorSprite->y = dispY;
         hudUnitDescriptorSprite->render();
 
-        Text::renderText(unitToDisplay->unitResources.displayName, Font::Black, Text::White, 40, dispY + 8, Center, 48);
+        Text::renderText(unitToDisplay->unitResources.displayName, Font::SlimDark, Text::White, 40, dispY + 8, Center, 48);
 
         hudStatTexts->x = 40;
         hudStatTexts->y = dispY + 24;
@@ -1888,7 +1888,7 @@ void Map::renderUnitDecription()
         hudStatTexts->render();
 
         std::string hpLine = std::to_string(unitToDisplay->hp) + "/" + std::to_string(unitToDisplay->maxHp);
-        Text::renderText(hpLine, Font::Black, Text::White, 56, dispY + 20, Center, 33);
+        Text::renderText(hpLine, Font::SlimDark, Text::White, 56, dispY + 20, Center, 33);
 
         hudHpBar->x = 40;
         hudHpBar->y = dispY + 33;
@@ -1969,8 +1969,8 @@ void Map::renderItemWindow(Unit* unit, int originX, int originY, int windowHeigh
                 colorUses = colorText;
             }
         }
-        Text::renderText(item.getName(), Font::White, colorText, originX + 16 + 5, originY + 5 + i*16, Left, 0);
-        Text::renderText(std::to_string(item.usesRemaining), Font::White, colorUses, originX + 6*16 - 14, originY + 6 + i*16, Right, 16);
+        Text::renderText(item.getName(), Font::Slim, colorText, originX + 16 + 5, originY + 5 + i*16, Left, 0);
+        Text::renderText(std::to_string(item.usesRemaining), Font::Slim, colorUses, originX + 6*16 - 14, originY + 6 + i*16, Right, 16);
     }
 }
 
@@ -1984,61 +1984,23 @@ void Map::renderItemWeaponStatsWindow()
 
     WindowBox::render(8*16, 6*16, 6*2, 3*2);
 
-    Text::renderText("Affi", Font::White, Text::White, 10*16,     6*16 + 3, Left, 0);
-    Text::renderText("Atk",  Font::White, Text::White,  8*16 + 6, 7*16,     Left, 0);
-    Text::renderText("Crit", Font::White, Text::White, 11*16    , 7*16,     Left, 0);
-    Text::renderText("Hit",  Font::White, Text::White,  8*16 + 6, 8*16 - 2, Left, 0);
-    Text::renderText("Avd",  Font::White, Text::White, 11*16    , 8*16 - 2, Left, 0);
+    Text::renderText("Affi", Font::Slim, Text::White, 10*16,     6*16 + 3, Left, 0);
+    Text::renderText("Atk",  Font::Slim, Text::White,  8*16 + 6, 7*16,     Left, 0);
+    Text::renderText("Crit", Font::Slim, Text::White, 11*16    , 7*16,     Left, 0);
+    Text::renderText("Hit",  Font::Slim, Text::White,  8*16 + 6, 8*16 - 2, Left, 0);
+    Text::renderText("Avd",  Font::Slim, Text::White, 11*16    , 8*16 - 2, Left, 0);
 
-    Item* weapon = selectedUnit->getEquippedWeapon();
-    WeaponStats stats;
-    if (weapon != nullptr)
-    {
-        stats = weapon->getWeaponStats();
-    }
-    MapTile tile = tiles[selectedUnit->tileX + selectedUnit->tileY*tilesWidth];
+    int attack;
+    int crit;
+    int hit;
+    int avoid;
+    int attackSpeed;
+    selectedUnit->calculateBaseCombatStats(&attack, &hit, &avoid, &crit, &attackSpeed);
 
-    //Attack calculation
-    int supportBonusAttack = 0;
-    int attack = stats.might + selectedUnit->str + supportBonusAttack;
-
-    //Crit calculation
-    int supportBonusCrit = 0;
-    int criticalBonus = 0;
-    int sRankBonusCrit = 0;
-    if (selectedUnit->weaponRank[stats.type] >= S)
-    {
-        sRankBonusCrit = 5;
-    }
-    int crit = stats.crit + selectedUnit->skl/2 + supportBonusCrit + criticalBonus + sRankBonusCrit;
-
-    //Hit calculation
-    int supportBonusHit = 0;
-    int sRankBonusHit = 0;
-    if (selectedUnit->weaponRank[stats.type] >= S)
-    {
-        sRankBonusHit = 5;
-    }
-    int tacticanBonusHit = 0;
-    int hit = stats.hit + selectedUnit->skl*2 + selectedUnit->lck/2 + supportBonusHit + sRankBonusHit + tacticanBonusHit;
-
-    //Avoid calculation
-    int supportBonusAvoid = 0;
-    int terrainBonusAvoid = tile.avoid;
-    if (selectedUnit->classResources.classType == ClassType::PegasusKnight ||
-        selectedUnit->classResources.classType == ClassType::FalconKnight  ||
-        selectedUnit->classResources.classType == ClassType::WyvernRider   ||
-        selectedUnit->classResources.classType == ClassType::WyvernLord)
-    {
-        terrainBonusAvoid = 0;
-    }
-    int tacticanBonusAvoid = 0;
-    int avoid = selectedUnit->getAttackSpeedWithWeapon(stats)*2 + selectedUnit->lck + supportBonusAvoid + terrainBonusAvoid + tacticanBonusAvoid;
-
-    Text::renderText(std::to_string(attack), Font::White, Text::Blue,  8*16 + 21, 7*16,     Right, 24);
-    Text::renderText(std::to_string(crit),   Font::White, Text::Blue, 11*16 + 17, 7*16,     Right, 24);
-    Text::renderText(std::to_string(hit),    Font::White, Text::Blue,  8*16 + 21, 8*16 - 2, Right, 24);
-    Text::renderText(std::to_string(avoid),  Font::White, Text::Blue, 11*16 + 17, 8*16 - 2, Right, 24);
+    Text::renderText(std::to_string(attack), Font::Slim, Text::Blue,  8*16 + 21, 7*16,     Right, 24);
+    Text::renderText(std::to_string(crit),   Font::Slim, Text::Blue, 11*16 + 17, 7*16,     Right, 24);
+    Text::renderText(std::to_string(hit),    Font::Slim, Text::Blue,  8*16 + 21, 8*16 - 2, Right, 24);
+    Text::renderText(std::to_string(avoid),  Font::Slim, Text::Blue, 11*16 + 17, 8*16 - 2, Right, 24);
 }
 
 void Map::renderItemEditWindow()
@@ -2054,7 +2016,7 @@ void Map::renderItemEditWindow()
 
     for (int i = 0; i < itemEditChoices.size(); i++)
     {
-        Text::renderText(itemEditChoices[i], Font::White, Text::White, ORIGIN_X + 8, ORIGIN_Y + 8 + i*16, Left, 0);
+        Text::renderText(itemEditChoices[i], Font::Slim, Text::White, ORIGIN_X + 8, ORIGIN_Y + 8 + i*16, Left, 0);
     }
 }
 
@@ -2157,8 +2119,8 @@ void Map::renderAttackPreview()
             attackPreviewBackdrop->y = baseY;
             attackPreviewBackdrop->render();
 
-            Text::renderText(selectedUnit ->unitResources.displayName, Font::White, Text::White, baseX + 26, baseY +  9, Center, 42);
-            Text::renderText(enemyOnCursor->unitResources.displayName, Font::White, Text::White, baseX + 10, baseY + 89, Center, 42);
+            Text::renderText(selectedUnit ->unitResources.displayName, Font::Slim, Text::White, baseX + 26, baseY +  9, Center, 42);
+            Text::renderText(enemyOnCursor->unitResources.displayName, Font::Slim, Text::White, baseX + 10, baseY + 89, Center, 42);
 
             int myAttackSpeed = selectedUnit->spd;
             Item* myWeapon = selectedUnit->getEquippedWeapon();
@@ -2176,7 +2138,7 @@ void Map::renderAttackPreview()
                 otherAttackSpeed = enemyOnCursor->getAttackSpeedWithWeapon(otherWeapon->getWeaponStats());
 
                 otherWeapon->render(baseX + 56, baseY + 90);
-                Text::renderText(otherWeapon->getName(), Font::White, Text::White, baseX + 10, baseY + 105, Center, 50);
+                Text::renderText(otherWeapon->getName(), Font::Slim, Text::White, baseX + 10, baseY + 105, Center, 50);
             }
 
             int myAttack    = 0;
@@ -2188,14 +2150,14 @@ void Map::renderAttackPreview()
             selectedUnit ->calculateCombatStatsVsUnit(enemyOnCursor, &myAttack,    &myHit,    &myCrit);
             enemyOnCursor->calculateCombatStatsVsUnit(selectedUnit,  &otherAttack, &otherHit, &otherCrit);
 
-            Text::renderText(std::to_string(selectedUnit->hp),  Font::White, Text::Blue, baseX + 48, baseY + 25, Right, 24);
-            Text::renderText(std::to_string(enemyOnCursor->hp), Font::White, Text::Blue, baseX +  2, baseY + 25, Right, 24);
-            Text::renderText(std::to_string(myAttack),          Font::White, Text::Blue, baseX + 48, baseY + 41, Right, 24);
-            Text::renderText(std::to_string(otherAttack),       Font::White, Text::Blue, baseX +  2, baseY + 41, Right, 24);
-            Text::renderText(std::to_string(myHit),             Font::White, Text::Blue, baseX + 48, baseY + 57, Right, 24);
-            Text::renderText(std::to_string(otherHit),          Font::White, Text::Blue, baseX +  2, baseY + 57, Right, 24);
-            Text::renderText(std::to_string(myCrit),            Font::White, Text::Blue, baseX + 48, baseY + 73, Right, 24);
-            Text::renderText(std::to_string(otherCrit),         Font::White, Text::Blue, baseX +  2, baseY + 73, Right, 24);
+            Text::renderText(std::to_string(selectedUnit->hp),  Font::Slim, Text::Blue, baseX + 48, baseY + 25, Right, 24);
+            Text::renderText(std::to_string(enemyOnCursor->hp), Font::Slim, Text::Blue, baseX +  2, baseY + 25, Right, 24);
+            Text::renderText(std::to_string(myAttack),          Font::Slim, Text::Blue, baseX + 48, baseY + 41, Right, 24);
+            Text::renderText(std::to_string(otherAttack),       Font::Slim, Text::Blue, baseX +  2, baseY + 41, Right, 24);
+            Text::renderText(std::to_string(myHit),             Font::Slim, Text::Blue, baseX + 48, baseY + 57, Right, 24);
+            Text::renderText(std::to_string(otherHit),          Font::Slim, Text::Blue, baseX +  2, baseY + 57, Right, 24);
+            Text::renderText(std::to_string(myCrit),            Font::Slim, Text::Blue, baseX + 48, baseY + 73, Right, 24);
+            Text::renderText(std::to_string(otherCrit),         Font::Slim, Text::Blue, baseX +  2, baseY + 73, Right, 24);
 
             if (myAttackSpeed - 4 >= otherAttackSpeed)
             {
