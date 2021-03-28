@@ -16,6 +16,7 @@ private:
     static void constructGraph(Unit* unit, int* graph, std::vector<Unit*>* unpassableUnits);
 
 public:
+    static void init();
     //Creates the blue and red preview tiles for a unit
     static void calculatePreviewTiles(Unit* unit, std::vector<Sprite*>* blueTiles, std::vector<Sprite*>* redTiles, std::vector<Unit*>* friendlyUnits, std::vector<Unit*>* unpassableUnits);
     //Creates the path a unit will take to a tile

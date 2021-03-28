@@ -13,6 +13,20 @@ int* Djikstra::dijkstraCost          = nullptr;
 int* Djikstra::dijkstraTilesDistance = nullptr;
 int* Djikstra::dijkstraTilesPath     = nullptr;
 
+void Djikstra::init()
+{
+    //too big for the stack
+    dijkstraGraph         = new int[NUM_NODES*NUM_NODES];
+    dijkstraCost          = new int[NUM_NODES*NUM_NODES];
+    dijkstraTilesDistance = new int[NUM_NODES];
+    dijkstraTilesPath     = new int[NUM_NODES];
+
+    memset(dijkstraGraph,         0, sizeof(int)*NUM_NODES*NUM_NODES);
+    memset(dijkstraCost,          0, sizeof(int)*NUM_NODES*NUM_NODES);
+    memset(dijkstraTilesDistance, 0, sizeof(int)*NUM_NODES);
+    memset(dijkstraTilesPath,     0, sizeof(int)*NUM_NODES);
+}
+
 void Djikstra::generateWalkingPath(Unit* unit, int tileX, int tileY, std::vector<SDL_Point>* path)
 {
     path->clear();
@@ -91,31 +105,12 @@ void Djikstra::constructGraph(Unit* unit, int* graph, std::vector<Unit*>* unpass
 
 void Djikstra::calculatePreviewTiles(Unit* unit, std::vector<Sprite*>* blueTiles, std::vector<Sprite*>* redTiles, std::vector<Unit*>* friendlyUnits, std::vector<Unit*>* unpassableUnits)
 {
-    if (dijkstraGraph == nullptr)
-    {
-        dijkstraGraph = new int[NUM_NODES*NUM_NODES];
-    }
-    memset(dijkstraGraph, 0, sizeof(int)*NUM_NODES*NUM_NODES);
+    memset(dijkstraGraph,         0, sizeof(int)*NUM_NODES*NUM_NODES);
+    memset(dijkstraCost,          0, sizeof(int)*NUM_NODES*NUM_NODES);
+    memset(dijkstraTilesDistance, 0, sizeof(int)*NUM_NODES);
+    memset(dijkstraTilesPath,     0, sizeof(int)*NUM_NODES);
 
     constructGraph(unit, dijkstraGraph, unpassableUnits);
-
-    if (dijkstraCost == nullptr)
-    {
-        dijkstraCost = new int[NUM_NODES*NUM_NODES];
-    }
-    memset(dijkstraCost, 0, sizeof(int)*NUM_NODES*NUM_NODES);
-    
-    if (dijkstraTilesDistance == nullptr)
-    {
-        dijkstraTilesDistance = new int[NUM_NODES];
-    }
-    memset(dijkstraTilesDistance, 0, sizeof(int)*NUM_NODES);
-
-    if (dijkstraTilesPath == nullptr)
-    {
-        dijkstraTilesPath = new int[NUM_NODES];
-    }
-    memset(dijkstraTilesPath, 0, sizeof(int)*NUM_NODES);
 
     const int INF = 100000000;
 

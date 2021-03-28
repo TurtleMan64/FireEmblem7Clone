@@ -8,8 +8,8 @@
 
 enum Font
 {
-    Slim,
-    SlimDark
+    Border,
+    Borderless
 };
 
 enum Alignment
@@ -22,10 +22,10 @@ enum Alignment
 class Text
 {
 private:
-    static SDL_Texture* texFontSlim;
-    static SDL_Texture* texFontSlimDark;
-    static std::unordered_map<char, SDL_Rect> asciiToRectSlim;
-    static std::unordered_map<char, SDL_Rect> asciiToRectSlimDark;
+    static SDL_Texture* texFontBorder;
+    static SDL_Texture* texFontBorderless;
+    static std::unordered_map<char, SDL_Rect> asciiToRectBorder;
+    static std::unordered_map<char, SDL_Rect> asciiToRectBorderless;
 
     static void loadFont(Font fontToLoad);
 
@@ -33,7 +33,9 @@ public:
     static const SDL_Color White;
     static const SDL_Color Blue;
     static const SDL_Color Yellow;
+    static const SDL_Color DarkGrey;
     static SDL_Color Green;
+    static void init();
     static void updateGreen();
     static void renderText(std::string text, Font font, SDL_Color color, int x, int y, Alignment alignment, int width);
 };

@@ -11,20 +11,20 @@
 
 SDL_Texture* Item::itemsTex = nullptr;
 
+void Item::init()
+{
+    itemsTex = IMG_LoadTexture(Global::sdlRenderer, "res/Images/Items/Items.png");
+    if (itemsTex == nullptr)
+    {
+        printf("Error: could not load 'res/Images/Items/Items.png'\n");   
+    }
+}
+
 Item::Item(ItemId id)
 {
     this->id = id;
     WeaponStats stats = getWeaponStats();
     usesRemaining = stats.usesMax;
-
-    if (itemsTex == nullptr)
-    {
-        itemsTex = IMG_LoadTexture(Global::sdlRenderer, "res/Images/Items/Items.png");
-        if (itemsTex == nullptr)
-        {
-            printf("Error: could not load items texture\n");   
-        }
-    }
 }
 
 void Item::render(int x, int y)

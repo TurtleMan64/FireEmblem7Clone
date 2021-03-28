@@ -171,6 +171,8 @@ public:
 
 
 public:
+    static void init();
+
     static void loadFresh(int mapId);
 
     static void step();

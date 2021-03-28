@@ -10,15 +10,22 @@
 #include "Util.hpp"
 #include "Text.hpp"
 
-const SDL_Color Text::White {255, 255, 255, 255};
-const SDL_Color Text::Blue  {198, 255, 255, 255};
-const SDL_Color Text::Yellow{255, 247, 140, 255};
-      SDL_Color Text::Green { 74, 239,  33, 255};
+const SDL_Color Text::White   {255, 255, 255, 255};
+const SDL_Color Text::Blue    {198, 255, 255, 255};
+const SDL_Color Text::Yellow  {255, 247, 140, 255};
+const SDL_Color Text::DarkGrey{ 56,  48,  40, 255};
+      SDL_Color Text::Green   { 74, 239,  33, 255};
 
-SDL_Texture* Text::texFontSlim     = nullptr;
-SDL_Texture* Text::texFontSlimDark = nullptr;
-std::unordered_map<char, SDL_Rect> Text::asciiToRectSlim;
-std::unordered_map<char, SDL_Rect> Text::asciiToRectSlimDark;
+SDL_Texture* Text::texFontBorder     = nullptr;
+SDL_Texture* Text::texFontBorderless = nullptr;
+std::unordered_map<char, SDL_Rect> Text::asciiToRectBorder;
+std::unordered_map<char, SDL_Rect> Text::asciiToRectBorderless;
+
+void Text::init()
+{
+    loadFont(Border);
+    loadFont(Borderless);
+}
 
 void Text::loadFont(Font fontToLoad)
 {
@@ -28,23 +35,23 @@ void Text::loadFont(Font fontToLoad)
 
     switch (fontToLoad)
     {
-        case Font::Slim:
-            texToLoad = &texFontSlim;
-            mapToLoad = &asciiToRectSlim;
-            name = "Slim";
+        case Font::Border:
+            texToLoad = &texFontBorder;
+            mapToLoad = &asciiToRectBorder;
+            name = "Border";
             break;
 
-        case Font::SlimDark:
-            texToLoad = &texFontSlimDark;
-            mapToLoad = &asciiToRectSlimDark;
-            name = "SlimDark";
+        case Font::Borderless:
+            texToLoad = &texFontBorderless;
+            mapToLoad = &asciiToRectBorderless;
+            name = "Borderless";
             break;
 
         default:
             break;
     }
 
-    std::string filenameFont = "res/Images/Text/Font" + name + ".png";
+    std::string filenameFont = "res/Images/Text/" + name + ".png";
     (*texToLoad) = IMG_LoadTexture(Global::sdlRenderer, filenameFont.c_str());
     if ((*texToLoad) == nullptr)
     {
@@ -52,7 +59,7 @@ void Text::loadFont(Font fontToLoad)
         return;
     }
 
-    std::vector<std::string> file = Util::readFile("res/Text/Font" + name + ".fnt");
+    std::vector<std::string> file = Util::readFile("res/Text/" + name + ".fnt");
 
     for (int i = 0; i < 71; i++)
     {
@@ -76,23 +83,18 @@ void Text::renderText(std::string text, Font font, SDL_Color color, int x, int y
 
     switch (font)
     {
-        case Font::Slim:
-            fontTex = &texFontSlim;
-            asciiToRect = &asciiToRectSlim;
+        case Font::Border:
+            fontTex = &texFontBorder;
+            asciiToRect = &asciiToRectBorder;
             break;
 
-        case Font::SlimDark:
-            fontTex = &texFontSlimDark;
-            asciiToRect = &asciiToRectSlimDark;
+        case Font::Borderless:
+            fontTex = &texFontBorderless;
+            asciiToRect = &asciiToRectBorderless;
             break;
 
         default:
             break;
-    }
-
-    if ((*fontTex) == nullptr)
-    {
-        loadFont(font);
     }
 
     int textWidth = 0;

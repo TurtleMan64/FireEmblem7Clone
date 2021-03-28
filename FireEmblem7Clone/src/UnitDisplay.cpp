@@ -28,44 +28,22 @@ Sprite* UnitDisplay::backdropBattles   = nullptr;
 Sprite* UnitDisplay::barPieces         = nullptr;
 Sprite* UnitDisplay::weaponIcons       = nullptr;
 Sprite* UnitDisplay::backdropEquipment = nullptr;
+Sprite* UnitDisplay::arrow             = nullptr;
+
+void UnitDisplay::init()
+{
+    background        = new Sprite("res/Images/Sprites/UnitDisplay/Background",        0,   0, false);
+    backdropMini      = new Sprite("res/Images/Sprites/UnitDisplay/MiniBackdrop",      0, 104, false);
+    backdropMugshot   = new Sprite("res/Images/Sprites/UnitDisplay/MugshotBackdrop",  -3,   0, false);
+    backdropBattles   = new Sprite("res/Images/Sprites/UnitDisplay/BattlesBackdrop",   0,   0, false);
+    barPieces         = new Sprite("res/Images/Sprites/Bar",                           0,   0, false);
+    weaponIcons       = new Sprite("res/Images/Sprites/WeaponIcon",                    0,   0, false);
+    backdropEquipment = new Sprite("res/Images/Sprites/UnitDisplay/EquipmentBackdrop", 0,   0, false);
+    arrow             = new Sprite("res/Images/Sprites/UnitDisplay/Arrow",             0,   0, false);
+}
 
 void UnitDisplay::step()
 {
-    if (background == nullptr)
-    {
-        background = new Sprite("res/Images/Sprites/UnitDisplay/Background", 0, 0, false);
-    }
-
-    if (backdropMini == nullptr)
-    {
-        backdropMini = new Sprite("res/Images/Sprites/UnitDisplay/MiniBackdrop", 0, 104, false);
-    }
-
-    if (backdropMugshot == nullptr)
-    {
-        backdropMugshot = new Sprite("res/Images/Sprites/UnitDisplay/MugshotBackdrop", -3, 0, false);
-    }
-
-    if (backdropBattles == nullptr)
-    {
-        backdropBattles = new Sprite("res/Images/Sprites/UnitDisplay/BattlesBackdrop", 0, 0, false);
-    }
-
-    if (barPieces == nullptr)
-    {
-        barPieces = new Sprite("res/Images/Sprites/Bar", 0, 0, false);
-    }
-
-    if (weaponIcons == nullptr)
-    {
-        weaponIcons = new Sprite("res/Images/Sprites/WeaponIcon", 0, 0, false);
-    }
-
-    if (backdropEquipment == nullptr)
-    {
-        backdropEquipment = new Sprite("res/Images/Sprites/UnitDisplay/EquipmentBackdrop", 0, 0, false);
-    }
-
     if (Global::frameCount % 3 == 0)
     {
         background->x--;
@@ -163,37 +141,38 @@ void UnitDisplay::step()
     renderOffset = Util::approach(renderOffset, renderOffsetTarget, 0.2f);
 
     const int baseX = 103;
-    const int baseY = 15;
+    const int baseY =  15;
+
+    renderPagePersonalData(unit, baseX + renderOffset      , baseY);
+    renderPageItems       (unit, baseX + renderOffset + 240, baseY);
+    renderPageWeaponLevels(unit, baseX + renderOffset + 480, baseY);
 
     switch (currentPage)
     {
         case PersonalData:
-        {
-            renderPagePersonalData(unit, baseX + renderOffset      , baseY);
-            renderPageItems       (unit, baseX + renderOffset + 240, baseY);
-            renderPageWeaponLevels(unit, baseX + renderOffset + 480, baseY);
-        }
-        break;
+            Text::renderText("Personal Data", Font::Border, Text::White, baseX + 10, 0, Center, 65);
+            Text::renderText("1/3", Font::Border, Text::White, baseX + 97, 0, Left, 0);
+            break;
 
         case Items:
-        {
-            renderPagePersonalData(unit, baseX + renderOffset      , baseY);
-            renderPageItems       (unit, baseX + renderOffset + 240, baseY);
-            renderPageWeaponLevels(unit, baseX + renderOffset + 480, baseY);
-        }
-        break;
+            Text::renderText("Items", Font::Border, Text::White, baseX + 10, 0, Center, 65);
+            Text::renderText("2/3", Font::Border, Text::White, baseX + 97, 0, Left, 0);
+            break;
 
         case WeaponLevels:
-        {
-            renderPagePersonalData(unit, baseX + renderOffset      , baseY);
-            renderPageItems       (unit, baseX + renderOffset + 240, baseY);
-            renderPageWeaponLevels(unit, baseX + renderOffset + 480, baseY);
-        }
-        break;
+            Text::renderText("Weapon Level", Font::Border, Text::White, baseX + 10, 0, Center, 65);
+            Text::renderText("3/3", Font::Border, Text::White, baseX + 97, 0, Left, 0);
+            break;
 
         default:
-        break;
+            break;
     }
+
+    arrow->imageIndex++;
+    arrow->scaleX = 1;
+    arrow->render(baseX +  2, 0, arrow->imageIndex);
+    arrow->scaleX = -1;
+    arrow->render(baseX + 76, 0, arrow->imageIndex);
 
     renderMini(unit, isEnemy);
     renderMugshot(unit, isEnemy);
@@ -207,10 +186,10 @@ void UnitDisplay::renderMugshot(Unit* unit, bool isEnemy)
         backdropMugshot->imageIndex = 1;
     }
     backdropMugshot->render();
-    SDL_Rect srcRect{(96 - 80)/2, (80 - 72)/2, 80, 72};
+    SDL_Rect srcRect{(96 - 80)/2, (80 - 72)/2, 80, 72}; //todo dont center in the middle once enemy mugshots are realigned
     SDL_Rect dstRect{13, 8, 80, 72};
     SDL_RenderCopy(Global::sdlRenderer, unit->sprMugshot->image->getTexture(0), &srcRect, &dstRect);
-    Text::renderText(unit->unitResources.displayName, Font::Slim, Text::White, 25, 81, Center, 64);
+    Text::renderText(unit->unitResources.displayName, Font::Border, Text::White, 25, 81, Center, 64);
 }
 
 void UnitDisplay::renderMini(Unit* unit, bool isEnemy)
@@ -224,11 +203,11 @@ void UnitDisplay::renderMini(Unit* unit, bool isEnemy)
     {
         unit->render(72, 122, 1, 0, 0);
     }
-    Text::renderText(unit->classResources.displayName, Font::Slim, Text::White, 9, 106, Left,   0);
-    Text::renderText(std::to_string(unit->lvl),        Font::Slim, Text::Blue, 24, 121, Right, 15);
-    Text::renderText(std::to_string(unit->exp),        Font::Slim, Text::Blue, 48, 121, Right, 15);
-    Text::renderText(std::to_string(unit->hp),         Font::Slim, Text::Blue, 24, 137, Right, 15);
-    Text::renderText(std::to_string(unit->maxHp),      Font::Slim, Text::Blue, 48, 137, Right, 15);
+    Text::renderText(unit->classResources.displayName, Font::Border, Text::White, 9, 106, Left,   0);
+    Text::renderText(std::to_string(unit->lvl),        Font::Border, Text::Blue, 24, 121, Right, 15);
+    Text::renderText(std::to_string(unit->exp),        Font::Border, Text::Blue, 48, 121, Right, 15);
+    Text::renderText(std::to_string(unit->hp),         Font::Border, Text::Blue, 24, 137, Right, 15);
+    Text::renderText(std::to_string(unit->maxHp),      Font::Border, Text::Blue, 48, 137, Right, 15);
 }
 
 void UnitDisplay::renderPagePersonalData(Unit* unit, int x, int y)
@@ -262,32 +241,32 @@ void UnitDisplay::renderPagePersonalData(Unit* unit, int x, int y)
     renderBar(x + 91, y + 14 + 15*0, (int)(unit->classResources.capMov*1.5f), unit->mov/(float)unit->classResources.capMov);
     renderBar(x + 91, y + 14 + 15*1, (int)(unit->classResources.capCon*1.5f), unit->con/(float)unit->classResources.capCon);
 
-    Text::renderText("Str",   Font::Slim, Text::Yellow, x +  4, y + 7 + 15*0, Left, 0);
-    Text::renderText("Mag",   Font::Slim, Text::Yellow, x +  4, y + 7 + 15*1, Left, 0);
-    Text::renderText("Skill", Font::Slim, Text::Yellow, x +  4, y + 7 + 15*2, Left, 0);
-    Text::renderText("Spd",   Font::Slim, Text::Yellow, x +  4, y + 7 + 15*3, Left, 0);
-    Text::renderText("Luck",  Font::Slim, Text::Yellow, x +  4, y + 7 + 15*4, Left, 0);
-    Text::renderText("Def",   Font::Slim, Text::Yellow, x +  4, y + 7 + 15*5, Left, 0);
-    Text::renderText("Res",   Font::Slim, Text::Yellow, x +  4, y + 7 + 15*6, Left, 0);
+    Text::renderText("Str",   Font::Border, Text::Yellow, x +  4, y + 7 + 15*0, Left, 0);
+    Text::renderText("Mag",   Font::Border, Text::Yellow, x +  4, y + 7 + 15*1, Left, 0);
+    Text::renderText("Skill", Font::Border, Text::Yellow, x +  4, y + 7 + 15*2, Left, 0);
+    Text::renderText("Spd",   Font::Border, Text::Yellow, x +  4, y + 7 + 15*3, Left, 0);
+    Text::renderText("Luck",  Font::Border, Text::Yellow, x +  4, y + 7 + 15*4, Left, 0);
+    Text::renderText("Def",   Font::Border, Text::Yellow, x +  4, y + 7 + 15*5, Left, 0);
+    Text::renderText("Res",   Font::Border, Text::Yellow, x +  4, y + 7 + 15*6, Left, 0);
 
-    Text::renderText("Move",  Font::Slim, Text::Yellow, x + 72, y + 7 + 15*0, Left, 0);
-    Text::renderText("Con",   Font::Slim, Text::Yellow, x + 72, y + 7 + 15*1, Left, 0);
-    Text::renderText("Aid",   Font::Slim, Text::Yellow, x + 72, y + 7 + 15*2, Left, 0);
-    Text::renderText("Trv",   Font::Slim, Text::Yellow, x + 72, y + 7 + 15*3, Left, 0);
-    Text::renderText("Affin", Font::Slim, Text::Yellow, x + 72, y + 7 + 15*4, Left, 0);
-    Text::renderText("Cond",  Font::Slim, Text::Yellow, x + 72, y + 7 + 15*5, Left, 0);
+    Text::renderText("Move",  Font::Border, Text::Yellow, x + 72, y + 7 + 15*0, Left, 0);
+    Text::renderText("Con",   Font::Border, Text::Yellow, x + 72, y + 7 + 15*1, Left, 0);
+    Text::renderText("Aid",   Font::Border, Text::Yellow, x + 72, y + 7 + 15*2, Left, 0);
+    Text::renderText("Trv",   Font::Border, Text::Yellow, x + 72, y + 7 + 15*3, Left, 0);
+    Text::renderText("Affin", Font::Border, Text::Yellow, x + 72, y + 7 + 15*4, Left, 0);
+    Text::renderText("Cond",  Font::Border, Text::Yellow, x + 72, y + 7 + 15*5, Left, 0);
 
-    Text::renderText(std::to_string(unit->str), Font::Slim, Text::Blue, x + 42, y + 7 + 15*0, Right, 0);
-    Text::renderText(std::to_string(unit->mag), Font::Slim, Text::Blue, x + 42, y + 7 + 15*1, Right, 0);
-    Text::renderText(std::to_string(unit->skl), Font::Slim, Text::Blue, x + 42, y + 7 + 15*2, Right, 0);
-    Text::renderText(std::to_string(unit->spd), Font::Slim, Text::Blue, x + 42, y + 7 + 15*3, Right, 0);
-    Text::renderText(std::to_string(unit->lck), Font::Slim, Text::Blue, x + 42, y + 7 + 15*4, Right, 0);
-    Text::renderText(std::to_string(unit->def), Font::Slim, Text::Blue, x + 42, y + 7 + 15*5, Right, 0);
-    Text::renderText(std::to_string(unit->res), Font::Slim, Text::Blue, x + 42, y + 7 + 15*6, Right, 0);
+    Text::renderText(std::to_string(unit->str), Font::Border, Text::Blue, x + 42, y + 7 + 15*0, Right, 0);
+    Text::renderText(std::to_string(unit->mag), Font::Border, Text::Blue, x + 42, y + 7 + 15*1, Right, 0);
+    Text::renderText(std::to_string(unit->skl), Font::Border, Text::Blue, x + 42, y + 7 + 15*2, Right, 0);
+    Text::renderText(std::to_string(unit->spd), Font::Border, Text::Blue, x + 42, y + 7 + 15*3, Right, 0);
+    Text::renderText(std::to_string(unit->lck), Font::Border, Text::Blue, x + 42, y + 7 + 15*4, Right, 0);
+    Text::renderText(std::to_string(unit->def), Font::Border, Text::Blue, x + 42, y + 7 + 15*5, Right, 0);
+    Text::renderText(std::to_string(unit->res), Font::Border, Text::Blue, x + 42, y + 7 + 15*6, Right, 0);
 
-    Text::renderText(std::to_string(unit->mov), Font::Slim, Text::Blue, x + 110, y + 7 + 15*0, Right, 0);
-    Text::renderText(std::to_string(unit->con), Font::Slim, Text::Blue, x + 110, y + 7 + 15*1, Right, 0);
-    Text::renderText(std::to_string(unit->aid), Font::Slim, Text::Blue, x + 110, y + 7 + 15*2, Right, 0);
+    Text::renderText(std::to_string(unit->mov), Font::Border, Text::Blue, x + 110, y + 7 + 15*0, Right, 0);
+    Text::renderText(std::to_string(unit->con), Font::Border, Text::Blue, x + 110, y + 7 + 15*1, Right, 0);
+    Text::renderText(std::to_string(unit->aid), Font::Border, Text::Blue, x + 110, y + 7 + 15*2, Right, 0);
 
     if (unit->rescuedUnit != nullptr)
     {
@@ -295,7 +274,7 @@ void UnitDisplay::renderPagePersonalData(Unit* unit, int x, int y)
     }
     else
     {
-        Text::renderText("---", Font::Slim, Text::Blue, x + 110, y + 7 + 15*3, Right, 0);
+        Text::renderText("---", Font::Border, Text::Blue, x + 110, y + 7 + 15*3, Right, 0);
     }
 
     //todo: affinity and condition
@@ -303,13 +282,13 @@ void UnitDisplay::renderPagePersonalData(Unit* unit, int x, int y)
     backdropBattles->x = x;
     backdropBattles->y = y + 122;
     backdropBattles->render();
-    Text::renderText("B", Font::Slim, Text::Yellow, x + 12, y + 123, Left, 0);
-    Text::renderText("W", Font::Slim, Text::Yellow, x + 52, y + 123, Left, 0);
-    Text::renderText("L", Font::Slim, Text::Yellow, x + 92, y + 123, Left, 0);
+    Text::renderText("B", Font::Border, Text::Yellow, x + 12, y + 123, Left, 0);
+    Text::renderText("W", Font::Border, Text::Yellow, x + 52, y + 123, Left, 0);
+    Text::renderText("L", Font::Border, Text::Yellow, x + 92, y + 123, Left, 0);
 
-    Text::renderText("0", Font::Slim, Text::Blue, x + 12 + 10, y + 123, Left, 0);
-    Text::renderText("01", Font::Slim, Text::Blue, x + 52 + 10, y + 123, Left, 0);
-    Text::renderText("123", Font::Slim, Text::Blue, x + 92 + 10, y + 123, Left, 0);
+    Text::renderText("0", Font::Border, Text::Blue, x + 12 + 10, y + 123, Left, 0);
+    Text::renderText("01", Font::Border, Text::Blue, x + 52 + 10, y + 123, Left, 0);
+    Text::renderText("123", Font::Border, Text::Blue, x + 92 + 10, y + 123, Left, 0);
 }
 
 void UnitDisplay::renderPageItems(Unit* unit, int x, int y)
@@ -347,25 +326,25 @@ void UnitDisplay::renderPageItems(Unit* unit, int x, int y)
         }
 
         item.render(x + 4, y + 4 + i*16);
-        Text::renderText(item.getName(),                                Font::Slim, colorText, x + 16 + 5,      y + 5 + i*16, Left,   0);
-        Text::renderText(std::to_string(item.usesRemaining),            Font::Slim, colorUses, x + 82,          y + 6 + i*16, Right, 16);
-        Text::renderText("/",                                           Font::Slim, colorText, x + 82 + 18,     y + 6 + i*16, Left,   0);
-        Text::renderText(std::to_string(item.getWeaponStats().usesMax), Font::Slim, colorUses, x + 82 + 16 + 7, y + 6 + i*16, Right, 16);
+        Text::renderText(item.getName(),                                Font::Border, colorText, x + 16 + 5,      y + 5 + i*16, Left,   0);
+        Text::renderText(std::to_string(item.usesRemaining),            Font::Border, colorUses, x + 82,          y + 6 + i*16, Right, 16);
+        Text::renderText("/",                                           Font::Border, colorText, x + 82 + 18,     y + 6 + i*16, Left,   0);
+        Text::renderText(std::to_string(item.getWeaponStats().usesMax), Font::Border, colorUses, x + 82 + 16 + 7, y + 6 + i*16, Right, 16);
 
         if (equippedWeapon != nullptr &&
             equippedWeapon == &unit->items[i])
         {
-            Text::renderText("E",                                       Font::Slim, colorText, x + 82 + 32 + 9, y + 6 + i*16, Left,   0);
+            Text::renderText("E",                                       Font::Border, colorText, x + 82 + 32 + 9, y + 6 + i*16, Left,   0);
         }
     }
 
     backdropEquipment->render(x + 8, y + 89, 0);
-    Text::renderText("Atk",      Font::Slim, Text::Yellow, x + 14, y +  90, Left, 0);
-    Text::renderText("Hit",      Font::Slim, Text::Yellow, x + 14, y + 106, Left, 0);
-    Text::renderText("Atk Spd",  Font::Slim, Text::Yellow, x + 14, y + 122, Left, 0);
-    Text::renderText("Rng",      Font::Slim, Text::Yellow, x + 76, y +  90, Left, 0);
-    Text::renderText("Crit",     Font::Slim, Text::Yellow, x + 76, y + 106, Left, 0);
-    Text::renderText("Avoid",    Font::Slim, Text::Yellow, x + 76, y + 122, Left, 0);
+    Text::renderText("Atk",      Font::Border, Text::Yellow, x + 14, y +  90, Left, 0);
+    Text::renderText("Hit",      Font::Border, Text::Yellow, x + 14, y + 106, Left, 0);
+    Text::renderText("Atk Spd",  Font::Border, Text::Yellow, x + 14, y + 122, Left, 0);
+    Text::renderText("Rng",      Font::Border, Text::Yellow, x + 76, y +  90, Left, 0);
+    Text::renderText("Crit",     Font::Border, Text::Yellow, x + 76, y + 106, Left, 0);
+    Text::renderText("Avoid",    Font::Border, Text::Yellow, x + 76, y + 122, Left, 0);
 
     int atk;
     int crt;
@@ -403,12 +382,12 @@ void UnitDisplay::renderPageItems(Unit* unit, int x, int y)
         }
     }
 
-    Text::renderText(std::to_string(atk), Font::Slim, Text::Blue, x + 20, y +  90, Right, 48);
-    Text::renderText(std::to_string(hit), Font::Slim, Text::Blue, x + 20, y + 106, Right, 48);
-    Text::renderText(std::to_string(asp), Font::Slim, Text::Blue, x + 20, y + 122, Right, 48);
-    Text::renderText(dispRange,           Font::Slim, Text::Blue, x + 76, y +  90, Right, 48);
-    Text::renderText(std::to_string(crt), Font::Slim, Text::Blue, x + 76, y + 106, Right, 48);
-    Text::renderText(std::to_string(avd), Font::Slim, Text::Blue, x + 76, y + 122, Right, 48);
+    Text::renderText(std::to_string(atk), Font::Border, Text::Blue, x + 20, y +  90, Right, 48);
+    Text::renderText(std::to_string(hit), Font::Border, Text::Blue, x + 20, y + 106, Right, 48);
+    Text::renderText(std::to_string(asp), Font::Border, Text::Blue, x + 20, y + 122, Right, 48);
+    Text::renderText(dispRange,           Font::Border, Text::Blue, x + 76, y +  90, Right, 48);
+    Text::renderText(std::to_string(crt), Font::Border, Text::Blue, x + 76, y + 106, Right, 48);
+    Text::renderText(std::to_string(avd), Font::Border, Text::Blue, x + 76, y + 122, Right, 48);
 }
 
 void UnitDisplay::renderPageWeaponLevels(Unit* unit, int x, int y)
@@ -454,14 +433,14 @@ void UnitDisplay::renderPageWeaponLevels(Unit* unit, int x, int y)
     renderBar(x + 21 + 65, y + 11 + 32, 41, progress[Dark ]);
     renderBar(x + 21 + 65, y + 11 + 48, 41, progress[Staff]);
 
-    Text::renderText(rank[Sword], Font::Slim, color[Sword], x + 21,      y + 4,      Center, 41);
-    Text::renderText(rank[Lance], Font::Slim, color[Lance], x + 21,      y + 4 + 16, Center, 41);
-    Text::renderText(rank[Axe  ], Font::Slim, color[Axe  ], x + 21,      y + 4 + 32, Center, 41);
-    Text::renderText(rank[Bow  ], Font::Slim, color[Bow  ], x + 21,      y + 4 + 48, Center, 41);
-    Text::renderText(rank[Anima], Font::Slim, color[Anima], x + 21 + 65, y + 4,      Center, 41);
-    Text::renderText(rank[Light], Font::Slim, color[Light], x + 21 + 65, y + 4 + 16, Center, 41);
-    Text::renderText(rank[Dark ], Font::Slim, color[Dark ], x + 21 + 65, y + 4 + 32, Center, 41);
-    Text::renderText(rank[Staff], Font::Slim, color[Staff], x + 21 + 65, y + 4 + 48, Center, 41);
+    Text::renderText(rank[Sword], Font::Border, color[Sword], x + 21,      y + 4,      Center, 41);
+    Text::renderText(rank[Lance], Font::Border, color[Lance], x + 21,      y + 4 + 16, Center, 41);
+    Text::renderText(rank[Axe  ], Font::Border, color[Axe  ], x + 21,      y + 4 + 32, Center, 41);
+    Text::renderText(rank[Bow  ], Font::Border, color[Bow  ], x + 21,      y + 4 + 48, Center, 41);
+    Text::renderText(rank[Anima], Font::Border, color[Anima], x + 21 + 65, y + 4,      Center, 41);
+    Text::renderText(rank[Light], Font::Border, color[Light], x + 21 + 65, y + 4 + 16, Center, 41);
+    Text::renderText(rank[Dark ], Font::Border, color[Dark ], x + 21 + 65, y + 4 + 32, Center, 41);
+    Text::renderText(rank[Staff], Font::Border, color[Staff], x + 21 + 65, y + 4 + 48, Center, 41);
 }
 
 void UnitDisplay::renderBar(int x, int y, int width, float progress)

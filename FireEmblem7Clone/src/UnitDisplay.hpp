@@ -25,6 +25,7 @@ private:
     static Sprite* barPieces;
     static Sprite* weaponIcons;
     static Sprite* backdropEquipment;
+    static Sprite* arrow;
 
     static int renderOffsetTarget;
     static int renderOffset;
@@ -38,5 +39,6 @@ private:
     static std::string calcWeaponProgress(Unit* unit, WeaponType weapon, float* outProgress, SDL_Color* color);
 
 public:
+    static void init();
     static void step();
 };

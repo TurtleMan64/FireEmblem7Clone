@@ -176,6 +176,8 @@ private:
     static SDL_Texture* itemsTex;
 
 public:
+    static void init();
+
     ItemId id = None;
     int usesRemaining = 1;
 

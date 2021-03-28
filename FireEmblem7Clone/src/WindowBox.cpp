@@ -6,13 +6,13 @@
 
 Sprite* WindowBox::tiles = nullptr;
 
+void WindowBox::init()
+{
+    tiles = new Sprite("res/Images/Sprites/Window/Box", 0, 0, false);
+}
+
 void WindowBox::render(int x, int y, int width, int height)
 {
-    if (tiles == nullptr)
-    {
-        tiles = new Sprite("res/Images/Sprites/Window/Box", 0, 0, false);
-    }
-
     if (width < 2 || height < 2)
     {
         return;

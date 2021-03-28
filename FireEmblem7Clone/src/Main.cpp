@@ -11,6 +11,9 @@
 #include "ClassData.hpp"
 #include "UnitDisplay.hpp"
 #include "Text.hpp"
+#include "Djikstra.hpp"
+#include "Items.hpp"
+#include "WindowBox.hpp"
 
 SDL_Renderer* Global::sdlRenderer = nullptr;
 
@@ -41,6 +44,12 @@ int main()
     MainMenu::init();
     Input::init();
     ClassData::init();
+    Djikstra::init();
+    Item::init();
+    Map::init();
+    Text::init();
+    UnitDisplay::init();
+    WindowBox::init();
 
     //SDL_SetHintWithPriority(SDL_HINT_RENDER_VSYNC, "0", SDL_HINT_OVERRIDE);
     //SDL_GL_SetSwapInterval(0);

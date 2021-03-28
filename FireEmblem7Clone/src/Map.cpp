@@ -93,10 +93,20 @@ bool Map::tradeSideLeft = false;
 bool Map::tradeIsLocked = false;
 Unit* Map::tradingUnit = nullptr;
 
-//int* Map::dijkstraGraph         = nullptr;
-//int* Map::dijkstraCost          = nullptr;
-//int* Map::dijkstraTilesDistance = nullptr;
-//int* Map::dijkstraTilesPath     = nullptr;
+void Map::init()
+{
+    cursor                  = new Sprite("res/Images/Sprites/Map/Cursor",           0,  0, false);
+    previewArrowSprite      = new Sprite("res/Images/Sprites/Map/PreviewArrow",     0,  0, false);
+    menuCursor              = new Sprite("res/Images/Sprites/Window/Hand",          0,  0, false);
+    hudObjectiveSprite      = new Sprite("res/Images/Sprites/Map/ObjectiveDisplay", 0,  0, false);
+    hudTileDescriptorSprite = new Sprite("res/Images/Sprites/Map/TileDisplay",      0,  0, false);
+    hudUnitDescriptorSprite = new Sprite("res/Images/Sprites/Map/UnitDisplay",      0,  0, false);
+    hudStatTexts            = new Sprite("res/Images/Sprites/Map/StatTexts",        0,  0, false);
+    hudHpBar                = new Sprite("res/Images/Sprites/Map/HpBar",            0,  0, false);
+    turnChangeSprite        = new Sprite("res/Images/Sprites/Map/TurnChange",       0, 64, false);
+    attackPreviewBackdrop   = new Sprite("res/Images/Sprites/Map/PreviewAttack",    0,  0, false);
+    attackPreviewMultiplier = new Sprite("res/Images/Sprites/Map/Multipliers",      0,  0, false);
+}
 
 void Map::loadFresh(int mapId)
 {
@@ -222,61 +232,6 @@ void Map::loadFresh(int mapId)
         enemy->weaponRank[Staff] = std::stoi(line[28]);
 
         unitsEnemy.push_back(enemy);
-    }
-
-    if (cursor == nullptr)
-    {
-        cursor = new Sprite("res/Images/Sprites/Map/Cursor", 0, 0, false);
-    }
-
-    if (previewArrowSprite == nullptr)
-    {
-        previewArrowSprite = new Sprite("res/Images/Sprites/Map/PreviewArrow", 0, 0, false);
-    }
-
-    if (menuCursor == nullptr)
-    {
-        menuCursor = new Sprite("res/Images/Sprites/Window/Hand", 0, 0, false);
-    }
-
-    if (hudObjectiveSprite == nullptr)
-    {
-        hudObjectiveSprite = new Sprite("res/Images/Sprites/Map/ObjectiveDisplay", 0, 0, false);
-    }
-
-    if (hudTileDescriptorSprite == nullptr)
-    {
-        hudTileDescriptorSprite = new Sprite("res/Images/Sprites/Map/TileDisplay", 0, 0, false);
-    }
-
-    if (hudUnitDescriptorSprite == nullptr)
-    {
-        hudUnitDescriptorSprite = new Sprite("res/Images/Sprites/Map/UnitDisplay", 0, 0, false);
-    }
-
-    if (hudStatTexts == nullptr)
-    {
-        hudStatTexts = new Sprite("res/Images/Sprites/Map/StatTexts", 0, 0, false);
-    }
-
-    if (hudHpBar == nullptr)
-    {
-        hudHpBar = new Sprite("res/Images/Sprites/Map/HpBar", 0, 0, false);
-    }
-
-    if (turnChangeSprite == nullptr)
-    {
-        turnChangeSprite = new Sprite("res/Images/Sprites/Map/TurnChange", 0, 64, false);
-    }
-
-    if (attackPreviewBackdrop == nullptr)
-    {
-        attackPreviewBackdrop = new Sprite("res/Images/Sprites/Map/PreviewAttack", 0, 0, false);
-    }
-
-    if (attackPreviewMultiplier == nullptr)
-    {
-        attackPreviewMultiplier = new Sprite("res/Images/Sprites/Map/Multipliers", 0, 0, false);
     }
 }
 
@@ -1741,7 +1696,7 @@ void Map::renderMainMenu()
 
     for (int i = 0; i < menuChoices.size(); i++)
     {
-        Text::renderText(menuChoices[i], Font::Slim, Text::White, windowBoxX + 6, 24 + i*16, Left, 0);
+        Text::renderText(menuChoices[i], Font::Border, Text::White, windowBoxX + 6, 24 + i*16, Left, 0);
     }
 }
 
@@ -1806,8 +1761,8 @@ void Map::renderObjective()
     }
 
     hudObjectiveSprite->render();
-    Text::renderText(line1, Font::Slim, Text::White, hudObjectiveSprite->x + 14, dispY +  8, Center, 76);
-    Text::renderText(line2, Font::Slim, Text::White, hudObjectiveSprite->x + 14, dispY + 24, Center, 76);
+    Text::renderText(line1, Font::Border, Text::White, hudObjectiveSprite->x + 14, dispY +  8, Center, 76);
+    Text::renderText(line2, Font::Border, Text::White, hudObjectiveSprite->x + 14, dispY + 24, Center, 76);
 }
 
 void Map::renderTileDescription()
@@ -1841,10 +1796,10 @@ void Map::renderTileDescription()
     hudStatTexts->render();
 
     MapTile tile = tiles[cursorX + tilesWidth*cursorY];
-    Text::renderText(tile.name, Font::Slim, Text::White, dispX + 8, 160 - 40, Center, 32);
+    Text::renderText(tile.name, Font::Border, Text::White, dispX + 8, 160 - 40, Center, 32);
 
-    Text::renderText(std::to_string(tile.defense), Font::SlimDark, Text::White, dispX + 24, 160 - 28, Right, 16);
-    Text::renderText(std::to_string(tile.avoid),   Font::SlimDark, Text::White, dispX + 24, 160 - 20, Right, 16);
+    Text::renderText(std::to_string(tile.defense), Font::Borderless, Text::DarkGrey, dispX + 24, 160 - 28, Right, 16);
+    Text::renderText(std::to_string(tile.avoid),   Font::Borderless, Text::DarkGrey, dispX + 24, 160 - 20, Right, 16);
 }
 
 void Map::renderUnitDecription()
@@ -1880,7 +1835,7 @@ void Map::renderUnitDecription()
         hudUnitDescriptorSprite->y = dispY;
         hudUnitDescriptorSprite->render();
 
-        Text::renderText(unitToDisplay->unitResources.displayName, Font::SlimDark, Text::White, 40, dispY + 8, Center, 48);
+        Text::renderText(unitToDisplay->unitResources.displayName, Font::Borderless, Text::DarkGrey, 40, dispY + 8, Center, 48);
 
         hudStatTexts->x = 40;
         hudStatTexts->y = dispY + 24;
@@ -1888,7 +1843,7 @@ void Map::renderUnitDecription()
         hudStatTexts->render();
 
         std::string hpLine = std::to_string(unitToDisplay->hp) + "/" + std::to_string(unitToDisplay->maxHp);
-        Text::renderText(hpLine, Font::SlimDark, Text::White, 56, dispY + 20, Center, 33);
+        Text::renderText(hpLine, Font::Borderless, Text::DarkGrey, 56, dispY + 20, Center, 33);
 
         hudHpBar->x = 40;
         hudHpBar->y = dispY + 33;
@@ -1969,8 +1924,8 @@ void Map::renderItemWindow(Unit* unit, int originX, int originY, int windowHeigh
                 colorUses = colorText;
             }
         }
-        Text::renderText(item.getName(), Font::Slim, colorText, originX + 16 + 5, originY + 5 + i*16, Left, 0);
-        Text::renderText(std::to_string(item.usesRemaining), Font::Slim, colorUses, originX + 6*16 - 14, originY + 6 + i*16, Right, 16);
+        Text::renderText(item.getName(), Font::Border, colorText, originX + 16 + 5, originY + 5 + i*16, Left, 0);
+        Text::renderText(std::to_string(item.usesRemaining), Font::Border, colorUses, originX + 6*16 - 14, originY + 6 + i*16, Right, 16);
     }
 }
 
@@ -1984,11 +1939,11 @@ void Map::renderItemWeaponStatsWindow()
 
     WindowBox::render(8*16, 6*16, 6*2, 3*2);
 
-    Text::renderText("Affi", Font::Slim, Text::White, 10*16,     6*16 + 3, Left, 0);
-    Text::renderText("Atk",  Font::Slim, Text::White,  8*16 + 6, 7*16,     Left, 0);
-    Text::renderText("Crit", Font::Slim, Text::White, 11*16    , 7*16,     Left, 0);
-    Text::renderText("Hit",  Font::Slim, Text::White,  8*16 + 6, 8*16 - 2, Left, 0);
-    Text::renderText("Avd",  Font::Slim, Text::White, 11*16    , 8*16 - 2, Left, 0);
+    Text::renderText("Affi", Font::Border, Text::White, 10*16,     6*16 + 3, Left, 0);
+    Text::renderText("Atk",  Font::Border, Text::White,  8*16 + 6, 7*16,     Left, 0);
+    Text::renderText("Crit", Font::Border, Text::White, 11*16    , 7*16,     Left, 0);
+    Text::renderText("Hit",  Font::Border, Text::White,  8*16 + 6, 8*16 - 2, Left, 0);
+    Text::renderText("Avd",  Font::Border, Text::White, 11*16    , 8*16 - 2, Left, 0);
 
     int attack;
     int crit;
@@ -1997,10 +1952,10 @@ void Map::renderItemWeaponStatsWindow()
     int attackSpeed;
     selectedUnit->calculateBaseCombatStats(&attack, &hit, &avoid, &crit, &attackSpeed);
 
-    Text::renderText(std::to_string(attack), Font::Slim, Text::Blue,  8*16 + 21, 7*16,     Right, 24);
-    Text::renderText(std::to_string(crit),   Font::Slim, Text::Blue, 11*16 + 17, 7*16,     Right, 24);
-    Text::renderText(std::to_string(hit),    Font::Slim, Text::Blue,  8*16 + 21, 8*16 - 2, Right, 24);
-    Text::renderText(std::to_string(avoid),  Font::Slim, Text::Blue, 11*16 + 17, 8*16 - 2, Right, 24);
+    Text::renderText(std::to_string(attack), Font::Border, Text::Blue,  8*16 + 21, 7*16,     Right, 24);
+    Text::renderText(std::to_string(crit),   Font::Border, Text::Blue, 11*16 + 17, 7*16,     Right, 24);
+    Text::renderText(std::to_string(hit),    Font::Border, Text::Blue,  8*16 + 21, 8*16 - 2, Right, 24);
+    Text::renderText(std::to_string(avoid),  Font::Border, Text::Blue, 11*16 + 17, 8*16 - 2, Right, 24);
 }
 
 void Map::renderItemEditWindow()
@@ -2016,7 +1971,7 @@ void Map::renderItemEditWindow()
 
     for (int i = 0; i < itemEditChoices.size(); i++)
     {
-        Text::renderText(itemEditChoices[i], Font::Slim, Text::White, ORIGIN_X + 8, ORIGIN_Y + 8 + i*16, Left, 0);
+        Text::renderText(itemEditChoices[i], Font::Border, Text::White, ORIGIN_X + 8, ORIGIN_Y + 8 + i*16, Left, 0);
     }
 }
 
@@ -2119,8 +2074,8 @@ void Map::renderAttackPreview()
             attackPreviewBackdrop->y = baseY;
             attackPreviewBackdrop->render();
 
-            Text::renderText(selectedUnit ->unitResources.displayName, Font::Slim, Text::White, baseX + 26, baseY +  9, Center, 42);
-            Text::renderText(enemyOnCursor->unitResources.displayName, Font::Slim, Text::White, baseX + 10, baseY + 89, Center, 42);
+            Text::renderText(selectedUnit ->unitResources.displayName, Font::Border, Text::White, baseX + 26, baseY +  9, Center, 42);
+            Text::renderText(enemyOnCursor->unitResources.displayName, Font::Border, Text::White, baseX + 10, baseY + 89, Center, 42);
 
             int myAttackSpeed = selectedUnit->spd;
             Item* myWeapon = selectedUnit->getEquippedWeapon();
@@ -2138,7 +2093,7 @@ void Map::renderAttackPreview()
                 otherAttackSpeed = enemyOnCursor->getAttackSpeedWithWeapon(otherWeapon->getWeaponStats());
 
                 otherWeapon->render(baseX + 56, baseY + 90);
-                Text::renderText(otherWeapon->getName(), Font::Slim, Text::White, baseX + 10, baseY + 105, Center, 50);
+                Text::renderText(otherWeapon->getName(), Font::Border, Text::White, baseX + 10, baseY + 105, Center, 50);
             }
 
             int myAttack    = 0;
@@ -2150,14 +2105,14 @@ void Map::renderAttackPreview()
             selectedUnit ->calculateCombatStatsVsUnit(enemyOnCursor, &myAttack,    &myHit,    &myCrit);
             enemyOnCursor->calculateCombatStatsVsUnit(selectedUnit,  &otherAttack, &otherHit, &otherCrit);
 
-            Text::renderText(std::to_string(selectedUnit->hp),  Font::Slim, Text::Blue, baseX + 48, baseY + 25, Right, 24);
-            Text::renderText(std::to_string(enemyOnCursor->hp), Font::Slim, Text::Blue, baseX +  2, baseY + 25, Right, 24);
-            Text::renderText(std::to_string(myAttack),          Font::Slim, Text::Blue, baseX + 48, baseY + 41, Right, 24);
-            Text::renderText(std::to_string(otherAttack),       Font::Slim, Text::Blue, baseX +  2, baseY + 41, Right, 24);
-            Text::renderText(std::to_string(myHit),             Font::Slim, Text::Blue, baseX + 48, baseY + 57, Right, 24);
-            Text::renderText(std::to_string(otherHit),          Font::Slim, Text::Blue, baseX +  2, baseY + 57, Right, 24);
-            Text::renderText(std::to_string(myCrit),            Font::Slim, Text::Blue, baseX + 48, baseY + 73, Right, 24);
-            Text::renderText(std::to_string(otherCrit),         Font::Slim, Text::Blue, baseX +  2, baseY + 73, Right, 24);
+            Text::renderText(std::to_string(selectedUnit->hp),  Font::Border, Text::Blue, baseX + 48, baseY + 25, Right, 24);
+            Text::renderText(std::to_string(enemyOnCursor->hp), Font::Border, Text::Blue, baseX +  2, baseY + 25, Right, 24);
+            Text::renderText(std::to_string(myAttack),          Font::Border, Text::Blue, baseX + 48, baseY + 41, Right, 24);
+            Text::renderText(std::to_string(otherAttack),       Font::Border, Text::Blue, baseX +  2, baseY + 41, Right, 24);
+            Text::renderText(std::to_string(myHit),             Font::Border, Text::Blue, baseX + 48, baseY + 57, Right, 24);
+            Text::renderText(std::to_string(otherHit),          Font::Border, Text::Blue, baseX +  2, baseY + 57, Right, 24);
+            Text::renderText(std::to_string(myCrit),            Font::Border, Text::Blue, baseX + 48, baseY + 73, Right, 24);
+            Text::renderText(std::to_string(otherCrit),         Font::Border, Text::Blue, baseX +  2, baseY + 73, Right, 24);
 
             if (myAttackSpeed - 4 >= otherAttackSpeed)
             {
