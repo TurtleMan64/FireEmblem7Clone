@@ -102,6 +102,20 @@ Unit::~Unit()
 
 void Unit::render(int pixelX, int pixelY, int sprIndex, int viewportPixelOffsetX, int viewportPixelOffsetY)
 {
+    SDL_Color c;
+    if (!isUsed)
+    {
+        c = {255, 255, 255, 255};
+    }
+    else
+    {
+        c = {128, 128, 128, 255};
+    }
+    render(pixelX, pixelY, sprIndex, viewportPixelOffsetX, viewportPixelOffsetY, c);
+}
+
+void Unit::render(int pixelX, int pixelY, int sprIndex, int viewportPixelOffsetX, int viewportPixelOffsetY, SDL_Color color)
+{
     x = pixelX;
     y = pixelY;
     spriteIndex = sprIndex;
@@ -126,16 +140,7 @@ void Unit::render(int pixelX, int pixelY, int sprIndex, int viewportPixelOffsetX
     s->x = (int)(viewportPixelOffsetX + pixelX);
     s->y = (int)(viewportPixelOffsetY + pixelY);
     s->imageIndex = Global::frameCount;
-    SDL_Color c;
-    if (!isUsed)
-    {
-        c = {255, 255, 255, 255};
-    }
-    else
-    {
-        c = {128, 128, 128, 255};
-    }
-    s->render(c);
+    s->render(color);
 }
 
 std::unordered_set<int> Unit::getAttackRanges()
@@ -149,7 +154,7 @@ std::unordered_set<int> Unit::getAttackRanges()
         {
             WeaponStats stats = item.getWeaponStats();
 
-            if (weaponRank[stats.type] >= stats.rankRequirement)
+            if (weaponRank[stats.type] >= stats.rankRequirement && item.usesRemaining > 0)
             {
                 std::unordered_set<int> range = item.getWeaponRange();
 
@@ -171,7 +176,7 @@ std::unordered_set<int> Unit::getEquipWeaponAttackRange()
         {
             WeaponStats stats = item.getWeaponStats();
 
-            if (weaponRank[stats.type] >= stats.rankRequirement)
+            if (weaponRank[stats.type] >= stats.rankRequirement && item.usesRemaining > 0)
             {
                 return item.getWeaponRange();
             }
@@ -192,7 +197,7 @@ Item* Unit::getEquippedWeapon()
         {
             WeaponStats stats = item.getWeaponStats();
 
-            if (weaponRank[stats.type] >= stats.rankRequirement)
+            if (weaponRank[stats.type] >= stats.rankRequirement && item.usesRemaining > 0)
             {
                 return &items[i];
             }
@@ -219,7 +224,7 @@ bool Unit::canUseWeapon(Item weapon)
     {
         WeaponStats stats = weapon.getWeaponStats();
 
-        if (weaponRank[stats.type] >= stats.rankRequirement)
+        if (weaponRank[stats.type] >= stats.rankRequirement && weapon.usesRemaining > 0)
         {
             return true;
         }

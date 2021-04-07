@@ -29,6 +29,7 @@ enum MapState
     UnitMenuAttackSelectTarget,
     UnitMenuTradeSelectTarget,
     UnitMenuTrading,
+    WaitingForAttackToFinish,
     PlayerPhaseEnding,
     EnemyPhaseEnding
 };
@@ -90,6 +91,11 @@ public:
     static Sprite* attackPreviewBackdrop;
     static Sprite* attackPreviewMultiplier;
     static void renderAttackPreview();
+
+    static Sprite* attackingHealthDisplay;
+    static Sprite* attackingMiss;
+    static Unit* defendingEnemy;
+    static int attackingTimer;
 
     static Unit* selectedUnit;
     static int selectedUnitOriginalTileX;

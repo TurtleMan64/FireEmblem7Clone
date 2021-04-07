@@ -6,32 +6,26 @@
 #include "Items.hpp"
 #include "Battle.hpp"
 
-Unit* Battle::unitLeft;
-Unit* Battle::unitRight;
-
-int Battle::turnIdx;
-std::vector<int> Battle::turns;
-
 std::vector<TurnResult> Battle::results;
 
-void Battle::doBattle(Unit* attackingUnit, Unit* defendingUnit)
+void Battle::doBattle(Unit* initialAttackingUnit, Unit* initialDefendingUnit)
 {
-    turnIdx = 0;
-    turns.clear();
+    std::vector<int> turns; //0 = lefts turn, 1 = rights turn
+
     results.clear();
 
-    int leftAttackSpeed = attackingUnit->spd;
-    Item* leftWeapon = attackingUnit->getEquippedWeapon();
+    int leftAttackSpeed = initialAttackingUnit->spd;
+    Item* leftWeapon = initialAttackingUnit->getEquippedWeapon();
     if (leftWeapon != nullptr)
     {
-        leftAttackSpeed = attackingUnit->getAttackSpeedWithWeapon(leftWeapon->getWeaponStats());
+        leftAttackSpeed = initialAttackingUnit->getAttackSpeedWithWeapon(leftWeapon->getWeaponStats());
     }
             
-    int rightAttackSpeed = defendingUnit->spd;
-    Item* rightWeapon = defendingUnit->getEquippedWeapon();
+    int rightAttackSpeed = initialDefendingUnit->spd;
+    Item* rightWeapon = initialDefendingUnit->getEquippedWeapon();
     if (rightWeapon != nullptr)
     {
-        rightAttackSpeed = defendingUnit->getAttackSpeedWithWeapon(rightWeapon->getWeaponStats());
+        rightAttackSpeed = initialDefendingUnit->getAttackSpeedWithWeapon(rightWeapon->getWeaponStats());
     }
 
     int leftAttack  = 0;
@@ -40,8 +34,8 @@ void Battle::doBattle(Unit* attackingUnit, Unit* defendingUnit)
     int rightAttack = 0;
     int rightHit    = 0;
     int rightCrit   = 0;
-    attackingUnit->calculateCombatStatsVsUnit(defendingUnit, &leftAttack,  &leftHit,  &leftCrit);
-    defendingUnit->calculateCombatStatsVsUnit(attackingUnit, &rightAttack, &rightHit, &rightCrit);
+    initialAttackingUnit->calculateCombatStatsVsUnit(initialDefendingUnit, &leftAttack,  &leftHit,  &leftCrit);
+    initialDefendingUnit->calculateCombatStatsVsUnit(initialAttackingUnit, &rightAttack, &rightHit, &rightCrit);
 
     if (leftWeapon != nullptr)
     {
@@ -63,63 +57,146 @@ void Battle::doBattle(Unit* attackingUnit, Unit* defendingUnit)
         turns.push_back(1);
     }
 
+    TurnResult initialTurn;
+
+    initialTurn.unitLeft  = initialDefendingUnit;
+    initialTurn.unitRight = initialAttackingUnit;
+    initialTurn.unitAttacking = initialAttackingUnit;
+    initialTurn.unitDefending = initialDefendingUnit;
+
+    initialTurn.unitLeftHp  = initialDefendingUnit->hp;
+    initialTurn.unitLeftAtk = leftAttack;
+    initialTurn.unitLeftHit = leftHit;
+    initialTurn.unitLeftCrt = leftCrit;
+
+    initialTurn.unitRightHp  = initialAttackingUnit->hp;
+    initialTurn.unitRightAtk = rightAttack;
+    initialTurn.unitRightHit = rightHit;
+    initialTurn.unitRightCrt = rightCrit;
+
+    if (leftWeapon != nullptr)
+    {
+        initialTurn.leftWeapon = *leftWeapon;
+    }
+    if (rightWeapon != nullptr)
+    {
+        initialTurn.rightWeapon = *rightWeapon;
+    }
+
+    results.push_back(initialTurn);
+
     for (int i = 0; i < turns.size(); i++)
     {
+        //Check if the attacking unit's weapon still has uses left
+        if (turns[i] == 0 && leftWeapon != nullptr && leftWeapon->usesRemaining <= 0)
+        {
+            continue;
+        }
+
+        if (turns[i] == 1 && rightWeapon != nullptr && rightWeapon->usesRemaining <= 0)
+        {
+            continue;
+        }
+
+        //Check if the attacking unit has a weapon
+        if (turns[i] == 0 && leftWeapon == nullptr)
+        {
+            continue;
+        }
+
+        if (turns[i] == 1 && rightWeapon == nullptr)
+        {
+            continue;
+        }
+
+        //Checking if the hit is > 0
+        if (turns[i] == 0 && leftHit <= 0)
+        {
+            continue;
+        }
+
+        if (turns[i] == 1 && rightHit <= 0)
+        {
+            continue;
+        }
+
+        TurnResult turn;
+        turn.hit  = false;
+        turn.crit = false;
+        turn.unitLeft    = initialDefendingUnit;
+        turn.unitRight   = initialAttackingUnit;
+        turn.unitLeftAtk = leftAttack;
+        turn.unitLeftHit = leftHit;
+        turn.unitLeftCrt = leftCrit;
+        turn.unitRightAtk = rightAttack;
+        turn.unitRightHit = rightHit;
+        turn.unitRightCrt = rightCrit;
+        if (leftWeapon != nullptr)
+        {
+            turn.leftWeapon = *leftWeapon;
+        }
+        if (rightWeapon != nullptr)
+        {
+            turn.rightWeapon = *rightWeapon;
+        }
+
         if (turns[i] == 0)
         {
+            turn.unitAttacking = initialAttackingUnit;
+            turn.unitDefending = initialDefendingUnit;
+
             int r1 = Util::random2();
-            printf("r1 = %d\n", r1);
             if (r1 < leftHit)
             {
                 int r2 = Util::random();
-                printf("r2 = %d\n", r2);
                 if (r2 < leftCrit)
                 {
-                    printf("crit\n");
-                    defendingUnit->hp -= 3*leftAttack;
+                    turn.unitDefending->hp -= 3*leftAttack;
+
+                    turn.crit = true;
+                    turn.hit = true;
                 }
                 else
                 {
-                    printf("hit\n");
-                    defendingUnit->hp -= leftAttack;
+                    turn.unitDefending->hp -= leftAttack;
+                    turn.hit = true;
                 }
-            }
-            else
-            {
-                printf("miss\n");
+                leftWeapon->usesRemaining--;
             }
         }
         else
         {
+            turn.unitAttacking = initialDefendingUnit;
+            turn.unitDefending = initialAttackingUnit;
+
             int r1 = Util::random2();
-            printf("r1 = %d\n", r1);
             if (r1 < rightHit)
             {
                 int r2 = Util::random();
-                printf("r2 = %d\n", r2);
                 if (r2 < rightCrit)
                 {
-                    printf("crit\n");
-                    attackingUnit->hp -= 3*rightAttack;
+                    turn.unitDefending->hp -= 3*rightAttack;
+                    turn.crit = true;
+                    turn.hit = true;
                 }
                 else
                 {
-                    printf("hit\n");
-                    attackingUnit->hp -= rightAttack;
+                    turn.unitDefending->hp -= rightAttack;
+                    turn.hit = true;
                 }
-            }
-            else
-            {
-                printf("miss\n");
+                rightWeapon->usesRemaining--;
             }
         }
 
-        if (attackingUnit->hp <= 0 || 
-            defendingUnit->hp <= 0)
+        turn.unitLeftHp  = initialDefendingUnit->hp;
+        turn.unitRightHp = initialAttackingUnit->hp;
+
+        results.push_back(turn);
+
+        if (initialAttackingUnit->hp <= 0 ||
+            initialDefendingUnit->hp <= 0)
         {
             return;
         }
     }
-
-    printf("\n");
 }

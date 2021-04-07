@@ -84,6 +84,10 @@ public:
     int con = 0;
     int aid = 0;
 
+    int battleTotal  = 0;
+    int battleWins   = 0;
+    int battleLosses = 0;
+
     int weaponRank[9] = {N,N,N,N,N,N,N,N,N};
 
     std::vector<Item> items;
@@ -94,6 +98,7 @@ public:
     ~Unit();
 
     void render(int x, int y, int spriteIndex, int viewportPixelOffsetX, int viewportPixelOffsetY);
+    void render(int x, int y, int spriteIndex, int viewportPixelOffsetX, int viewportPixelOffsetY, SDL_Color color);
 
     std::unordered_set<int> getAttackRanges();
 

@@ -348,7 +348,7 @@ WeaponStats Item::getWeaponStats()
         case WolfBeil     : return {Axe,       U, 30, 10, 10, 75,  5, 1,  6000};
         case Armads       : return {Axe,       U, 25, 18, 18, 85,  0, 1,    -1};
 
-        case IronBow      : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
+        case IronBow      : return {Bow,       E, 3, 1, 1, 90, 0, 1, 1};
         case EmblemBow    : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
         case PoisonBow    : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
         case ShortBow     : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};

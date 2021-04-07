@@ -93,19 +93,26 @@ bool Map::tradeSideLeft = false;
 bool Map::tradeIsLocked = false;
 Unit* Map::tradingUnit = nullptr;
 
+Sprite* Map::attackingMiss = nullptr;
+Sprite* Map::attackingHealthDisplay = nullptr;
+Unit* Map::defendingEnemy = nullptr;
+int Map::attackingTimer = 0;
+
 void Map::init()
 {
-    cursor                  = new Sprite("res/Images/Sprites/Map/Cursor",           0,  0, false);
-    previewArrowSprite      = new Sprite("res/Images/Sprites/Map/PreviewArrow",     0,  0, false);
-    menuCursor              = new Sprite("res/Images/Sprites/Window/Hand",          0,  0, false);
-    hudObjectiveSprite      = new Sprite("res/Images/Sprites/Map/ObjectiveDisplay", 0,  0, false);
-    hudTileDescriptorSprite = new Sprite("res/Images/Sprites/Map/TileDisplay",      0,  0, false);
-    hudUnitDescriptorSprite = new Sprite("res/Images/Sprites/Map/UnitDisplay",      0,  0, false);
-    hudStatTexts            = new Sprite("res/Images/Sprites/Map/StatTexts",        0,  0, false);
-    hudHpBar                = new Sprite("res/Images/Sprites/Map/HpBar",            0,  0, false);
-    turnChangeSprite        = new Sprite("res/Images/Sprites/Map/TurnChange",       0, 64, false);
-    attackPreviewBackdrop   = new Sprite("res/Images/Sprites/Map/PreviewAttack",    0,  0, false);
-    attackPreviewMultiplier = new Sprite("res/Images/Sprites/Map/Multipliers",      0,  0, false);
+    cursor                  = new Sprite("res/Images/Sprites/Map/Cursor",              0,  0, false);
+    previewArrowSprite      = new Sprite("res/Images/Sprites/Map/PreviewArrow",        0,  0, false);
+    menuCursor              = new Sprite("res/Images/Sprites/Window/Hand",             0,  0, false);
+    hudObjectiveSprite      = new Sprite("res/Images/Sprites/Map/ObjectiveDisplay",    0,  0, false);
+    hudTileDescriptorSprite = new Sprite("res/Images/Sprites/Map/TileDisplay",         0,  0, false);
+    hudUnitDescriptorSprite = new Sprite("res/Images/Sprites/Map/UnitDisplay",         0,  0, false);
+    hudStatTexts            = new Sprite("res/Images/Sprites/Map/StatTexts",           0,  0, false);
+    hudHpBar                = new Sprite("res/Images/Sprites/Map/HpBar",               0,  0, false);
+    turnChangeSprite        = new Sprite("res/Images/Sprites/Map/TurnChange",          0, 64, false);
+    attackPreviewBackdrop   = new Sprite("res/Images/Sprites/Map/PreviewAttack",       0,  0, false);
+    attackPreviewMultiplier = new Sprite("res/Images/Sprites/Map/Multipliers",         0,  0, false);
+    attackingMiss           = new Sprite("res/Images/Sprites/Map/Miss",                0,  0, false);
+    attackingHealthDisplay  = new Sprite("res/Images/Sprites/Map/AttackHealthDisplay", 0,  0, false);
 }
 
 void Map::loadFresh(int mapId)
@@ -351,7 +358,7 @@ void Map::playerPhase()
         }
         else if (Input::pressedY())
         {
-            if (useableUnitOnCursor != nullptr || enemyUnitOnCursor != nullptr)
+            if (getUnitAtTile(cursorX, cursorY, &unitsPlayer) != nullptr || getUnitAtTile(cursorX, cursorY, &unitsEnemy) != nullptr)
             {
                 Global::transitionToNewState(Global::GameState::UnitDisplay, 10);
             }
@@ -749,13 +756,15 @@ void Map::playerPhase()
             Unit* enemyOnCursor = getUnitAtTile(cursorX, cursorY, &unitsEnemy);
             if (enemyOnCursor != nullptr)
             {
+                defendingEnemy = enemyOnCursor;
+                attackingTimer = 0;
+
                 Battle::doBattle(selectedUnit, enemyOnCursor);
-                selectedUnit->isUsed = true;
-                selectedUnit = nullptr;
+
                 resetNeutralHudDescriptions();
                 clearPreviewTiles();
                 clearPreviewTilesEnemyAll();
-                mapState = Neutral;
+                mapState = WaitingForAttackToFinish;
             }
         }
         else if (Input::pressedB())
@@ -766,6 +775,148 @@ void Map::playerPhase()
             mapState = UnitMenu;
         }
 
+        break;
+    }
+
+    case WaitingForAttackToFinish:
+    {
+        renderUnits(&unitsEnemy,  6, defendingEnemy);
+        renderUnits(&unitsPlayer, 0, selectedUnit);
+
+        int diffX = defendingEnemy->tileX - selectedUnit->tileX;
+        int diffY = defendingEnemy->tileY - selectedUnit->tileY;
+
+        SDL_Point toMove;
+
+        int playerDir = 0;
+        int enemyDir  = 0;
+        if (diffX > 0)
+        {
+            playerDir =  5;
+            enemyDir  = 10;
+            toMove = {1, 0};
+        }
+        else if (diffX < 0)
+        {
+            playerDir =  4;
+            enemyDir  = 11;
+            toMove = {-1, 0};
+        }
+        else if (diffY > 0)
+        {
+            playerDir = 3;
+            enemyDir  = 8;
+            toMove = {0, 1};
+        }
+        else
+        {
+            playerDir = 2;
+            enemyDir  = 9;
+            toMove = {0, -1};
+        }
+
+        int turnIdx = attackingTimer/60; //1 second per attack
+        int turnTimer = attackingTimer % 60;
+
+        TurnResult turn = Battle::results[turnIdx + 1];
+
+        int turnScale = 1;
+        int attackingIndex = playerDir;
+        int defendingIndex = 6;
+        if (turn.unitDefending == selectedUnit)
+        {
+            attackingIndex = enemyDir;
+            defendingIndex = 0;
+            turnScale = -1;
+        }
+
+        if (turnTimer >= 22 && turnTimer < 38)
+        {
+            if (turnTimer < 30)
+            {
+                turn.unitAttacking->x += toMove.x*turnScale;
+                turn.unitAttacking->y += toMove.y*turnScale;
+            }
+            else
+            {
+                turn.unitAttacking->x -= toMove.x*turnScale;
+                turn.unitAttacking->y -= toMove.y*turnScale;
+            }
+        }
+
+        SDL_Color colorDefending{255, 255, 255, 255};
+        if (turn.hit && turnTimer >= 30 && turnTimer < 45)
+        {
+            colorDefending.r = (Uint8)((turnTimer - 30)*16);
+            colorDefending.g = (Uint8)((turnTimer - 30)*16);
+            colorDefending.b = (Uint8)((turnTimer - 30)*16);
+        }
+
+        turn.unitDefending->render(turn.unitDefending->x, turn.unitDefending->y, defendingIndex, viewportPixelX, viewportPixelY, colorDefending);
+        turn.unitAttacking->render(turn.unitAttacking->x, turn.unitAttacking->y, attackingIndex, viewportPixelX, viewportPixelY);
+
+        if (!turn.hit && turnTimer >= 16 && turnTimer < 44)
+        {
+            attackingMiss->render(turn.unitDefending->x + 8 + viewportPixelX, turn.unitDefending->y + 8 + viewportPixelY, turnTimer - 16);
+        }
+
+        attackingHealthDisplay->y = 16;
+        if (defendingEnemy->tileY - viewportY < 5)
+        {
+            attackingHealthDisplay->y = 112;
+        }
+        attackingHealthDisplay->render( 40, attackingHealthDisplay->y, 0);
+        attackingHealthDisplay->render(120, attackingHealthDisplay->y, 1);
+
+        int dispIdx = (int)floor((attackingTimer - 30)/60.0f) + 1;
+        TurnResult displayTurn = Battle::results[dispIdx];
+        Text::renderText(std::to_string(displayTurn.unitRightHp),   Font::Border, Text::White,  46, attackingHealthDisplay->y + 14, Right,  16);
+        Text::renderText(std::to_string(displayTurn.unitLeftHp),    Font::Border, Text::White, 126, attackingHealthDisplay->y + 14, Right,  16);
+        Text::renderText(selectedUnit->unitResources.displayName,   Font::Border, Text::White,  49, attackingHealthDisplay->y +  1, Center, 60);
+        Text::renderText(defendingEnemy->unitResources.displayName, Font::Border, Text::White, 129, attackingHealthDisplay->y +  1, Center, 60);
+
+        float hpPerc = ((float)displayTurn.unitRightHp)/selectedUnit->maxHp;
+        SDL_Rect hpBar;
+        hpBar.x = 108;
+        hpBar.y = attackingHealthDisplay->y + 21;
+        hpBar.w = (int)(-41*(1 - hpPerc));
+        hpBar.h = 2;
+        SDL_SetRenderDrawColor(Global::sdlRenderer, 115, 49, 0, 255);
+        SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
+
+        hpPerc = ((float)displayTurn.unitLeftHp)/defendingEnemy->maxHp;
+        hpBar.x = 188;
+        hpBar.w = (int)(-41*(1 - hpPerc));
+        SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
+        SDL_SetRenderDrawColor(Global::sdlRenderer, 255, 255, 255, 255);
+
+
+        attackingTimer++;
+        if (attackingTimer >= (Battle::results.size() - 1)*60)
+        {
+            attackingTimer = 0;
+
+            selectedUnit->isUsed = true;
+
+            if (selectedUnit->hp <= 0)
+            {
+                unitsPlayer.erase(unitsPlayer.begin() + Util::getIndex(&unitsPlayer, selectedUnit));
+                delete selectedUnit;
+                selectedUnit = nullptr;
+            }
+
+            if (defendingEnemy->hp <= 0)
+            {
+                unitsEnemy.erase(unitsEnemy.begin() + Util::getIndex(&unitsEnemy, defendingEnemy));
+                delete defendingEnemy;
+                defendingEnemy = nullptr;
+            }
+
+            resetNeutralHudDescriptions();
+            clearPreviewTiles();
+            clearPreviewTilesEnemyAll();
+            mapState = Neutral;
+        }
         break;
     }
 

@@ -11,8 +11,11 @@ struct TurnResult
     Unit* unitLeft  = nullptr;
     Unit* unitRight = nullptr;
 
-    bool missed = false;
-    bool crit   = false;
+    Unit* unitAttacking = nullptr;
+    Unit* unitDefending = nullptr;
+
+    bool hit  = false;
+    bool crit = false;
 
     int unitLeftHp  = 0;
     int unitLeftAtk = 0;
@@ -31,12 +34,6 @@ struct TurnResult
 class Battle
 {
 public:
-    static Unit* unitLeft;
-    static Unit* unitRight;
-
-    static int turnIdx;
-    static std::vector<int> turns;
-
     static std::vector<TurnResult> results;
 
     static void doBattle(Unit* attackingUnit, Unit* defendingUnit);

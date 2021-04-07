@@ -286,9 +286,9 @@ void UnitDisplay::renderPagePersonalData(Unit* unit, int x, int y)
     Text::renderText("W", Font::Border, Text::Yellow, x + 52, y + 123, Left, 0);
     Text::renderText("L", Font::Border, Text::Yellow, x + 92, y + 123, Left, 0);
 
-    Text::renderText("0", Font::Border, Text::Blue, x + 12 + 10, y + 123, Left, 0);
-    Text::renderText("01", Font::Border, Text::Blue, x + 52 + 10, y + 123, Left, 0);
-    Text::renderText("123", Font::Border, Text::Blue, x + 92 + 10, y + 123, Left, 0);
+    Text::renderText(std::to_string(unit->battleTotal),  Font::Border, Text::Blue, x + 12 + 10, y + 123, Left, 0);
+    Text::renderText(std::to_string(unit->battleWins),   Font::Border, Text::Blue, x + 52 + 10, y + 123, Left, 0);
+    Text::renderText(std::to_string(unit->battleLosses), Font::Border, Text::Blue, x + 92 + 10, y + 123, Left, 0);
 }
 
 void UnitDisplay::renderPageItems(Unit* unit, int x, int y)

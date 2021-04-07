@@ -7,7 +7,8 @@
 #include <vector>
 
 #include "Weapons.hpp"
-#include "Unit.hpp"
+
+class Unit;
 
 class Util
 {
@@ -44,4 +45,7 @@ public:
     // based on some delimiter character. the string canont be more 
     // than 1023 characters long.
     static std::vector<std::string> split(std::string line, char delim);
+
+    //Searches through the vector and returns the index where the element exists or -1
+    static int getIndex(std::vector<Unit*>* vector, Unit* e);
 };

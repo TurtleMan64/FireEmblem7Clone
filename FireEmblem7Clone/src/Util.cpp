@@ -8,6 +8,7 @@
 
 #include "Global.hpp"
 #include "Util.hpp"
+#include "Unit.hpp"
 
 SDL_Texture* Util::loadRedImage(std::string path)
 {
@@ -298,4 +299,17 @@ std::vector<std::string> Util::split(std::string line, char delim)
     free(parsedData);
 
     return dat;
+}
+
+int Util::getIndex(std::vector<Unit*>* vector, Unit* e)
+{
+    for (int i = 0; i < vector->size(); i++)
+    {
+        if (vector->at(i) == e)
+        {
+            return i;
+        }
+    }
+
+    return -1;
 }
