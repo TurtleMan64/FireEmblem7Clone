@@ -258,6 +258,8 @@ void Map::loadFresh(int mapId)
 
         unitsEnemy.push_back(enemy);
     }
+
+    Djikstra::allocMapTiles(tilesWidth, tilesHeight);
 }
 
 void Map::step()
@@ -1455,7 +1457,7 @@ void Map::enemyPhase()
                 enemy->items.push_back(item);
             }
 
-            //if (objective == MapObjective::Protect) //Head for the sieze tile
+            if (objective == MapObjective::Protect) //Head for the sieze tile
             {
                 int dx = std::abs(seizeTile.x - enemy->tileX);
                 int dy = std::abs(seizeTile.y - enemy->tileY);
@@ -1474,8 +1476,10 @@ void Map::enemyPhase()
                     enemyIdx--;
                 }
             }
-
-            //enemyIdx--;
+            else
+            {
+                enemyIdx--;
+            }
         }
 
         break;
