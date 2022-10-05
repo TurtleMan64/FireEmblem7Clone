@@ -1,5 +1,6 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
+#include <SDL/SDL_mixer.h>
 
 #include <string>
 
@@ -14,9 +15,11 @@
 #include "Djikstra.hpp"
 #include "Items.hpp"
 #include "WindowBox.hpp"
+#include "Audio.hpp"
 
 SDL_Renderer* Global::sdlRenderer = nullptr;
 
+float Global::fpsSleepBias = 16.0f;
 int Global::frameCount = 0;
 
 Global::GameState Global::gameState = Title;
@@ -32,6 +35,7 @@ int Global::fadeInTimer = 30;
 int main()
 {
     SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_AUDIO);
     SDL_Init(SDL_INIT_GAMECONTROLLER);
     IMG_Init(IMG_INIT_PNG);
 
@@ -41,6 +45,11 @@ int main()
 
     SDL_Texture* mainRenderTexture = SDL_CreateTexture(Global::sdlRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 240, 160);
 
+    //Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
+    //Mix_Chunk* jumpEffect = Mix_LoadWAV("res/Audio/SFX/LevelUp.wav");
+    //Mix_PlayChannel(-1, jumpEffect, 0);
+
+    Audio::init();
     MainMenu::init();
     Input::init();
     ClassData::init();
@@ -68,8 +77,8 @@ int main()
     SDL_Texture* texTitleScreen = IMG_LoadTexture(Global::sdlRenderer, "res/Images/BG/TitleScreen.png");
     //SDL_Texture* texMainMenu    = IMG_LoadTexture(Global::sdlRenderer, "res/Images/BG/MainMenu.png");
 
-    unsigned int prevTime = SDL_GetTicks();
-    unsigned int prevSecond = prevTime/1000;
+    float prevTimeMs = (float)SDL_GetTicks();
+    float prevSecond = prevTimeMs/1000.0f;
     int framesThisSecond = 0;
 
     int animIndex = 0;
@@ -95,29 +104,37 @@ int main()
             }
         }
 
-        unsigned int currentTime = SDL_GetTicks();
-        //if its been < 4ms since last frame, that means vsync isnt on and the game is probably running really fast.
+        float currentTimeMs = (float)SDL_GetTicks();
+        //if its been < 10ms since last frame, that means vsync isnt on and the game is probably running really fast.
         // this would also happen with a 120hz or 144hz etc monitor. it also seems to happen when you minimize the 
         // game window. in either case we dont want the game wasting useless cpu + gpu so we can sleep for approx the
         // remaining time. fps wont be a consistent 60 but the game is probably minimized so we dont really care.
-        if (currentTime - prevTime < 4)
+        if (currentTimeMs - prevTimeMs < 10)
         {
             //printf("Frame only took %dms, spin locking for rest of the time\n", (currentTime - prevTime));
-            while (currentTime - prevTime < 16)
+            //while (currentTime - prevTime < 16)
             {
                 //LOL
-                currentTime = SDL_GetTicks();
+                //currentTime = SDL_GetTicks();
             }
-            //SDL_Delay(32 - (currentTime - prevTime));
-            //printf("Sleeping for %dms\n", 17 - (currentTime - prevTime));
+            SDL_Delay((16 - (int)(currentTimeMs - prevTimeMs)) + (int)Global::fpsSleepBias);
+            //printf("Sleeping for %dms\n", (16 - (int)(currentTimeMs - prevTimeMs)) + (int)Global::fpsSleepBias);
         }
-        prevTime = currentTime;
+        prevTimeMs = currentTimeMs;
 
-        if (currentTime/1000 > prevSecond)
+        if (currentTimeMs/1000 > prevSecond)
         {
-            //printf("fps = %d\n", frameCount);
+            //printf("fps = %d, bias = %f\n", framesThisSecond, Global::fpsSleepBias);
+
+            Global::fpsSleepBias += 0.24f*(framesThisSecond - 60);
+
+            if (Global::fpsSleepBias < 0.0f)
+            {
+                Global::fpsSleepBias = 0.0f;
+            }
+
             framesThisSecond = 0;
-            prevSecond = currentTime/1000;
+            prevSecond += 1.0f;
         }
 
         SDL_Event event;
@@ -247,6 +264,12 @@ int main()
 
         animIndex++;
     }
+
+    SDL_DestroyRenderer(Global::sdlRenderer);
+    SDL_DestroyWindow(window);
+    Mix_CloseAudio();
+    //Mix_FreeChunk(jumpEffect);
+    SDL_Quit();
 
     return 0;
 }

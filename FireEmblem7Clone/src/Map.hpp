@@ -4,10 +4,13 @@
 
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 #include "MapTile.hpp"
 
 class Sprite;
+class Unit;
+class Item;
 
 enum MapObjective
 {
@@ -27,11 +30,17 @@ enum MapState
     UnitMenuItem,
     UnitMenuItemAction,
     UnitMenuAttackSelectTarget,
+    WaitingForAttackToFinish,
     UnitMenuTradeSelectTarget,
     UnitMenuTrading,
-    WaitingForAttackToFinish,
+    UnitMenuStaffSelect,
+    UnitMenuStaffSelectTarget,
+    WaitingForStaffToFinish,
     PlayerPhaseEnding,
-    EnemyPhaseEnding
+    EnemyPhaseEnding,
+    EnemyPhaseCalculating,
+    EnemyPhaseWaitingForUnitToMove,
+    EnemyPhaseWaitingForAttackToFinish
 };
 
 class Map
@@ -73,6 +82,13 @@ public:
     static void calculateMenuChoices();
     static void executeMenuChoice();
 
+    static int staffIdx;
+    static std::vector<Item*> staffChoices;
+    static std::vector<Sprite*> previewTilesGreen;
+    static bool unitCanUseStaff(Unit* unit, Item staff, std::vector<Unit*>* friends, std::vector<Unit*>* foes);
+    static void renderStaffWindow();
+    static void renderStaffDescriptionWindow();
+
     static void renderMainMenu();
     static void renderHandCursor(int windowX, int windowY, int idx);
 
@@ -108,7 +124,8 @@ public:
     static std::vector<Sprite*> previewTilesEnemyAll; //Preview for all enemies
 
     static void createAttackPreviewTiles(Unit* unit, std::unordered_set<int> ranges);
-    static std::unordered_set<int> calculateRedTilesAtTile(int tileX, int tileY, std::unordered_set<int> ranges);
+    static void createStaffPreviewTiles(Unit* unit, std::unordered_set<int> ranges);
+    static std::vector<SDL_Point> calculatePreviewTilesAtTile(int tileX, int tileY, std::unordered_set<int> ranges);
 
     static Sprite* previewArrowSprite;
     static void renderPreviewArrows();
@@ -117,6 +134,7 @@ public:
     static int turnCountMax;
 
     static MapObjective objective;
+    static SDL_Point seizeTile; //in seize maps, the sieze tile. in defend maps, the tile that enemies are trying to reach.
     static int hudObjectiveY;
     static Sprite* hudObjectiveSprite;
     static void renderObjective();
@@ -144,6 +162,8 @@ public:
     static std::vector<Unit*> getAdjacentUnits(Unit* unit, std::vector<Unit*>* units);
 
     static std::vector<Unit*> getEnemiesInRedTiles();
+
+    static std::vector<Unit*> getUnitsInTiles(std::vector<Unit*>* units, std::vector<SDL_Point>* tilesToSearch);
 
     static int tradeLeftIdx;
     static int tradeRightIdx;
@@ -175,6 +195,15 @@ public:
     static void playerPhase();
     static void enemyPhase();
 
+    // enemy phase specific stuff
+    static int enemyIdx; // the index of the current enemy on enemy phase
+    static int enemyWalkingTimer; //When this is > 0, we are waiting for walking animtation to play out.
+    static std::vector<SDL_Point> enemyWalkingPath; //The tiles that you walk through
+    static SDL_Point enemyTileToAttackFrom;
+    static Unit* unitEnemyWillAttack;
+    static Item weaponEnemyAttacksWith;
+    static int enemyAttackingTimer;
+    static MapState enemyStateAfterCurrentState;
 
 public:
     static void init();

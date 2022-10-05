@@ -37,3 +37,12 @@ struct WeaponStats
     int exp = 0;
     int worth = 0;
 };
+
+struct StaffStats
+{
+    WeaponRank rankRequirement = N;
+    int usesMax = 50;
+    int userExp = 0;
+    int weaponExp = 0;
+    int worth = 0;
+};

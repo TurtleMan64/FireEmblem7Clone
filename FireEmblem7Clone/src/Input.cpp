@@ -59,6 +59,9 @@ void Input::poll()
         inputs[6] = inputs[6] | SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_DOWN);
         inputs[7] = inputs[7] | SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT);
         inputs[8] = inputs[8] | SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT);
+
+        //int x = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTX);
+        //printf("%f\n", x/32768.0f);
     }
 
     if (Global::transitionTimer > 0 || Global::fadeInTimer > 0)

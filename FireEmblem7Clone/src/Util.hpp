@@ -16,6 +16,10 @@ public:
     //makes var be in [lower, higher] range
     static int clamp(int lower, int var, int higher);
 
+    static int min(int val1, int val2);
+
+    static int max(int val1, int val2);
+
     //returns average of 2 random calls [0, 99] 
     static int random2();
 
@@ -31,6 +35,8 @@ public:
     static int mod(int val, int mod);
 
     static int getManhattanDistance(Unit* unit1, Unit* unit2);
+
+    static int getManhattanDistance(int x1, int y1, int x2, int y2);
 
     //-1 if myWeapon is bad against other, 0 if neutral, 1 if myWeapon is good against other
     static int getWeaponTriangle(WeaponStats myWeapon, WeaponStats otherWeapon);

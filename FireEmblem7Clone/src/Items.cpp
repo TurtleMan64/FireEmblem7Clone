@@ -20,6 +20,17 @@ void Item::init()
     }
 }
 
+Item::Item()
+{
+    id = None;
+    usesRemaining = 0;
+}
+
+bool Item::operator ==(const Item& other) const
+{
+    return id == other.id && usesRemaining == other.usesRemaining;
+}
+
 Item::Item(ItemId id)
 {
     this->id = id;
@@ -54,6 +65,17 @@ bool Item::isWeapon()
     }
 
     if (id == Flametongue)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool Item::isStaff()
+{
+    int idx = (int)id;
+    if (idx >= (int)Heal && idx < (int)DelphiShield)
     {
         return true;
     }
@@ -142,17 +164,61 @@ void Item::consume(Unit* unit)
         //case Mine         : return true;
         //case LightRune    : return true;
         //case PureWater    : return true;
-        //
-        //
-        //case AngelicRobe  : return true;
-        //case EnergyRing   : return true;
-        //case SecretBook   : return true;
-        //case Speedwing    : return true;
-        //case GoddessIcon  : return true;
-        //case Dracoshield  : return true;
-        //case Talisman     : return true;
-        //case Boots        : return true;
-        //case BodyRing     : return true;
+
+        case AngelicRobe:
+        {
+            unit->maxHp += 7;
+            unit->hp += 7;
+            return;
+        }
+
+        case EnergyRing:
+        {
+            unit->str += 2;
+            return;
+        }
+
+        case SecretBook:
+        {
+            unit->skl += 2;
+            return;
+        }
+
+        case Speedwing:
+        {
+            unit->spd += 2;
+            return;
+        }
+
+        case GoddessIcon:
+        {
+            unit->lck += 2;
+            return;
+        }
+
+        case Dracoshield:
+        {
+            unit->def += 2;
+            return;
+        }
+
+        case Talisman:
+        {
+            unit->res += 2;
+            return;
+        }
+
+        case Boots:
+        {
+            unit->mov += 2;
+            return;
+        }
+
+        case BodyRing:
+        {
+            unit->con += 2;
+            return;
+        }
         //case HeroCrest    : return true;
         //case KnightCrest  : return true;
         //case OrionsBolt   : return true;
@@ -281,6 +347,46 @@ std::unordered_set<int> Item::getWeaponRange()
     }
 }
 
+std::unordered_set<int> Item::getStaffRange()
+{
+    std::unordered_set<int> ranges;
+
+    if (!isStaff())
+    {
+        return ranges;
+    }
+
+    if (id == Torch   ||
+        id == Physic  ||
+        id == Silence ||
+        id == Sleep   ||
+        id == Berserk ||
+        id == Rescue)
+    {
+        ranges.insert(1);
+        ranges.insert(2);
+        ranges.insert(3);
+        ranges.insert(4);
+        ranges.insert(5);
+        ranges.insert(6);
+        ranges.insert(7);
+        ranges.insert(8);
+        ranges.insert(9);
+        ranges.insert(10);
+    }
+    else if (id == Unlock)
+    {
+        ranges.insert(1);
+        ranges.insert(2);
+    }
+    else
+    {
+        ranges.insert(1);
+    }
+
+    return ranges;
+}
+
 WeaponStats Item::getWeaponStats()
 {
     switch (id)
@@ -348,16 +454,16 @@ WeaponStats Item::getWeaponStats()
         case WolfBeil     : return {Axe,       U, 30, 10, 10, 75,  5, 1,  6000};
         case Armads       : return {Axe,       U, 25, 18, 18, 85,  0, 1,    -1};
 
-        case IronBow      : return {Bow,       E, 3, 1, 1, 90, 0, 1, 1};
-        case EmblemBow    : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
-        case PoisonBow    : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
-        case ShortBow     : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
-        case Longbow      : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
-        case SteelBow     : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
-        case KillerBow    : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
-        case BraveBow     : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
-        case SilverBow    : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
-        case Rienfleche   : return {Bow,       E, 1, 1, 1, 1, 0, 1, 1};
+        case IronBow      : return {Bow,       E, 45,  5,  6, 85,  0, 1,   540};
+        case EmblemBow    : return {Bow,       E, 60,  5,  6, 85,  0, 1,    -1};
+        case PoisonBow    : return {Bow,       D, 40,  5,  4, 65,  0, 1,    -1};
+        case ShortBow     : return {Bow,       D, 22,  3,  5, 85, 10, 2,  1760};
+        case Longbow      : return {Bow,       D, 20, 10,  5, 65,  0, 1,  2000};
+        case SteelBow     : return {Bow,       D, 30,  9,  9, 70,  0, 1,   720};
+        case KillerBow    : return {Bow,       C, 20,  7,  9, 75, 30, 1,  1400};
+        case BraveBow     : return {Bow,       B, 30, 12, 10, 70,  0, 1,  7500};
+        case SilverBow    : return {Bow,       A, 20,  6, 13, 75,  0, 1,  1600};
+        case Rienfleche   : return {Bow,       S, 25,  7, 20, 80,  0, 1, 15000};
 
         case Fire         : return {Anima,     E, 40,  4,  5, 90,  0, 1,   500};
         case Thunder      : return {Anima,     D, 35,  6,  8, 80,  5, 1,   700};
@@ -367,82 +473,63 @@ WeaponStats Item::getWeaponStats()
         case Excalibur    : return {Anima,     S, 25, 13, 18, 90, 10, 3, 25000};
         case Forblaze     : return {Anima,     U, 20, 11, 14, 85,  5, 1,    -1};
 
-        case Lightning    : return {Light,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Shine        : return {Light,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Divine       : return {Light,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Purge        : return {Light,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Aura         : return {Light,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Aureola      : return {Light,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Luce         : return {Light,     E, 1, 1, 1, 1, 0, 1, 1};
+        case Lightning    : return {Light,     E, 35,  6,  4, 95,  5, 1,   630};
+        case Shine        : return {Light,     D, 30,  8,  6, 90,  8, 2,   900};
+        case Divine       : return {Light,     C, 25, 12,  8, 85, 10, 1,  2500};
+        case Purge        : return {Light,     B,  5, 20, 10, 75,  5, 3,  3000};
+        case Aura         : return {Light,     A, 20, 15, 12, 85, 15, 1,  8000};
+        case Aureola      : return {Light,     S, 20, 14, 15, 90,  5, 0,    -1};
+        case Luce         : return {Light,     S, 25, 16, 16, 95, 25, 3, 30000};
 
-        case Flux         : return {Dark,      E, 1, 1, 1, 1, 0, 1, 1};
-        case Luna         : return {Dark,      E, 1, 1, 1, 1, 0, 1, 1};
-        case Nosferatu    : return {Dark,      E, 1, 1, 1, 1, 0, 1, 1};
-        case Eclipse      : return {Dark,      E, 1, 1, 1, 1, 0, 1, 1};
-        case Fenrir       : return {Dark,      E, 1, 1, 1, 1, 0, 1, 1};
-        case Gespenst     : return {Dark,      E, 1, 1, 1, 1, 0, 1, 1};
-        case Ereshkigal   : return {Dark,      E, 1, 1, 1, 1, 0, 1, 1};
+        case Flux         : return {Dark,      D, 45,  8,  7, 80,  0, 1,   900};
+        case Luna         : return {Dark,      C, 35, 12,  0, 95, 20, 1,  5250};
+        case Nosferatu    : return {Dark,      C, 20, 14, 10, 70,  0, 1,  3200};
+        case Eclipse      : return {Dark,      B,  5, 12,  0, 30,  0, 8,  4000};
+        case Fenrir       : return {Dark,      A, 20, 18, 15, 70,  0, 1,  9000};
+        case Gespenst     : return {Dark,      S, 25, 20, 23, 80,  0, 3, 35000};
+        case Ereshkigal   : return {Dark,      S, 50, 12, 20, 95,  0, 1,    -1};
 
-        case Heal         : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Mend         : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case TorchStaff   : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Unlock       : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Recover      : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Restore      : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Hammerne     : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Barrier      : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Physic       : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Silence      : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Sleep        : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Berserk      : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Rescue       : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Fortify      : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
-        case Warp         : return {Staff,     E, 1, 1, 1, 1, 0, 1, 1};
+        case Heal         : return {Staff,     E, 30, 0, 11, 0, 0, 2,  600};
+        case Mend         : return {Staff,     D, 20, 0, 12, 0, 0, 3, 1000};
+        case TorchStaff   : return {Staff,     D, 10, 0, 15, 0, 0, 5, 1000};
+        case Unlock       : return {Staff,     D, 10, 0, 17, 0, 0, 5, 1500};
+        case Recover      : return {Staff,     C, 15, 0, 17, 0, 0, 3, 2250};
+        case Restore      : return {Staff,     C, 10, 0, 20, 0, 0, 3, 3000};
+        case Hammerne     : return {Staff,     C,  3, 0, 40, 0, 0, 8, 2000};
+        case Barrier      : return {Staff,     C, 15, 0, 17, 0, 0, 4, 2250};
+        case Physic       : return {Staff,     B, 15, 0, 22, 0, 0, 3, 3750};
+        case Silence      : return {Staff,     B,  3, 0, 30, 0, 0, 5, 1200};
+        case Sleep        : return {Staff,     B,  3, 0, 35, 0, 0, 5, 1500};
+        case Berserk      : return {Staff,     B,  3, 0, 40, 0, 0, 5, 1800};
+        case Rescue       : return {Staff,     B,  3, 0, 40, 0, 0, 7, 1800};
+        case Fortify      : return {Staff,     A,  8, 0, 60, 0, 0, 5, 8000};
+        case Warp         : return {Staff,     A,  5, 0, 85, 0, 0, 7, 7500};
 
-        case DelphiShield : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case IronRune     : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case FilasMight   : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case NinisGrace   : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case ThorsIre     : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case SetsLitany   : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case AfasDrops    : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case DoorKey      : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case ChestKey     : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case ChestKey5    : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case Vulnerary    : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case Antitoxin    : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case Torch        : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case Mine         : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case LightRune    : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case PureWater    : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case Lockpick     : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case Elixir       : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case SilverCard   : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case MemberCard   : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case RedGem       : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case BlueGem      : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case WhiteGem     : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case AngelicRobe  : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case EnergyRing   : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case SecretBook   : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case Speedwing    : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case GoddessIcon  : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case Dracoshield  : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case Talisman     : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case Boots        : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case BodyRing     : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case HeroCrest    : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case KnightCrest  : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case OrionsBolt   : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case ElysianWhip  : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case GuidingRing  : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case EarthSeal    : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case HeavensSeal  : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case FellContract : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case OceanSeal    : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
-        case EmblemSeal   : return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
         case Flametongue  : return {Dark,      E, 1, 1, 1, 1, 0, 1, 1};
         default:            return {NotWeapon, N, 1, 1, 1, 1, 0, 1, 1};
+    }
+}
+
+StaffStats Item::getStaffStats()
+{
+    switch (id)
+    {
+        case Heal         : return {E, 30, 11, 2,  600};
+        case Mend         : return {D, 20, 12, 3, 1000};
+        case TorchStaff   : return {D, 10, 15, 5, 1000};
+        case Unlock       : return {D, 10, 17, 5, 1500};
+        case Recover      : return {C, 15, 17, 3, 2250};
+        case Restore      : return {C, 10, 20, 3, 3000};
+        case Hammerne     : return {C,  3, 40, 8, 2000};
+        case Barrier      : return {C, 15, 17, 4, 2250};
+        case Physic       : return {B, 15, 22, 3, 3750};
+        case Silence      : return {B,  3, 30, 5, 1200};
+        case Sleep        : return {B,  3, 35, 5, 1500};
+        case Berserk      : return {B,  3, 40, 5, 1800};
+        case Rescue       : return {B,  3, 40, 7, 1800};
+        case Fortify      : return {A,  8, 60, 5, 8000};
+        case Warp         : return {A,  5, 85, 7, 7500};
+        default           : return {N,  0,  0, 0,    0};
     }
 }
 

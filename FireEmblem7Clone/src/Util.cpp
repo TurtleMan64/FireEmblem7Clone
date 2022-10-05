@@ -88,9 +88,37 @@ SDL_Texture* Util::loadRedImage(std::string path)
 
 int Util::clamp(int lower, int var, int higher)
 {
-    if (var < lower)  return lower;
-    if (var > higher) return higher;
+    if (var < lower)
+    {
+        return lower;
+    }
+
+    if (var > higher)
+    {
+        return higher;
+    }
+
     return var;
+}
+
+int Util::min(int val1, int val2)
+{
+    if (val1 < val2)
+    {
+        return val1;
+    }
+
+    return val2;
+}
+
+int Util::max(int val1, int val2)
+{
+    if (val1 > val2)
+    {
+        return val1;
+    }
+
+    return val2;
 }
 
 int Util::random2()
@@ -139,6 +167,14 @@ int Util::getManhattanDistance(Unit* unit1, Unit* unit2)
 {
     int diffX = unit1->tileX - unit2->tileX;
     int diffY = unit1->tileY - unit2->tileY;
+
+    return abs(diffX) + abs(diffY);
+}
+
+int Util::getManhattanDistance(int x1, int y1, int x2, int y2)
+{
+    int diffX = x1 - x2;
+    int diffY = y1 - y2;
 
     return abs(diffX) + abs(diffY);
 }

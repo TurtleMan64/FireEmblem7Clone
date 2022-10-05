@@ -188,6 +188,9 @@ void Battle::doBattle(Unit* initialAttackingUnit, Unit* initialDefendingUnit)
             }
         }
 
+        initialAttackingUnit->hp = Util::max(0, initialAttackingUnit->hp);
+        initialDefendingUnit->hp = Util::max(0, initialDefendingUnit->hp);
+
         turn.unitLeftHp  = initialDefendingUnit->hp;
         turn.unitRightHp = initialAttackingUnit->hp;
 

@@ -167,6 +167,7 @@ void Djikstra::calculatePreviewTiles(Unit* unit, std::vector<Sprite*>* blueTiles
     }
 
     std::unordered_set<int> blueTilesSet;
+    //std::vector<SDL_Point> blueTilesSet;
 
     for (i = 0; i < NUM_NODES; i++)
     {
@@ -180,6 +181,7 @@ void Djikstra::calculatePreviewTiles(Unit* unit, std::vector<Sprite*>* blueTiles
 
             blueTiles->push_back(new Sprite("res/Images/Sprites/Map/PreviewTileBlue", tileX, tileY, false));
             blueTilesSet.insert(tileX | (tileY << 16));
+            //blueTilesSet.push_back(SDL_Point{tileX, tileY});
         }
 
         j = i;
@@ -191,6 +193,7 @@ void Djikstra::calculatePreviewTiles(Unit* unit, std::vector<Sprite*>* blueTiles
 
     std::unordered_set<int> attackRanges = unit->getAttackRanges();
     std::unordered_set<int> redTilesSet;
+    //std::vector<SDL_Point> redTilesSet;
 
     for (int t = 0; t < blueTiles->size(); t++)
     {
@@ -205,14 +208,33 @@ void Djikstra::calculatePreviewTiles(Unit* unit, std::vector<Sprite*>* blueTiles
             continue;
         }
 
-        std::unordered_set<int> newReds = Map::calculateRedTilesAtTile(baseX, baseY, attackRanges);
-        redTilesSet.insert(newReds.begin(), newReds.end());
+        std::vector<SDL_Point> newReds = Map::calculatePreviewTilesAtTile(baseX, baseY, attackRanges);
+        //redTilesSet.insert(newReds.begin(), newReds.end());
+        for (SDL_Point p : newReds)
+        {
+            redTilesSet.insert(p.x | (p.y << 16));
+        }
     }
 
     for (auto itr = redTilesSet.begin(); itr != redTilesSet.end(); ++itr)
     {
         int newRedTile = *itr;
 
+        //bool contains = false;
+        //for (SDL_Point p : blueTilesSet)
+        //{
+        //    if (p.x == newRedTile.x &&
+        //        p.y == newRedTile.y)
+        //    {
+        //        contains = true;
+        //        break;
+        //    }
+        //}
+        //
+        //if (!contains)
+        //{
+        //    redTiles->push_back(new Sprite("res/Images/Sprites/Map/PreviewTileRed", newRedTile.x, newRedTile.y, false));
+        //}
         auto contains = blueTilesSet.find(newRedTile);
         if (contains == blueTilesSet.end()) //Dont create if already a blue tile
         {
@@ -220,5 +242,106 @@ void Djikstra::calculatePreviewTiles(Unit* unit, std::vector<Sprite*>* blueTiles
             int y = (newRedTile >> 16) & 0xFFFF;
             redTiles->push_back(new Sprite("res/Images/Sprites/Map/PreviewTileRed", x, y, false));
         }
+    }
+}
+
+void Djikstra::calculateBlueTiles(Unit* unit, std::vector<SDL_Point>* blueTiles, std::vector<Unit*>* friendlyUnits, std::vector<Unit*>* unpassableUnits)
+{
+    memset(dijkstraGraph,         0, sizeof(int)*NUM_NODES*NUM_NODES);
+    memset(dijkstraCost,          0, sizeof(int)*NUM_NODES*NUM_NODES);
+    memset(dijkstraTilesDistance, 0, sizeof(int)*NUM_NODES);
+    memset(dijkstraTilesPath,     0, sizeof(int)*NUM_NODES);
+
+    constructGraph(unit, dijkstraGraph, unpassableUnits);
+
+    const int INF = 100000000;
+
+    int visited[NUM_NODES], count, mindistance, nextnode = 0, i, j;
+    for (i = 0; i < NUM_NODES; i++)
+    {
+        for (j = 0; j < NUM_NODES; j++)
+        {
+            if (dijkstraGraph[i*NUM_NODES + j] == 0)
+            {
+                dijkstraCost[i*NUM_NODES + j] = INF;
+            }
+            else
+            {
+                dijkstraCost[i*NUM_NODES + j] = dijkstraGraph[i*NUM_NODES + j];
+            }
+        }
+    }
+
+    const int START_NODE = NUM_NODES/2;
+    for (i = 0; i < NUM_NODES; i++)
+    {
+        dijkstraTilesDistance[i] = dijkstraCost[START_NODE*NUM_NODES + i];
+        dijkstraTilesPath[i] = START_NODE;
+        visited[i] = 0;
+    }
+    dijkstraTilesDistance[START_NODE] = 0;
+    visited[START_NODE] = 1;
+    count = 1;
+    while (count < NUM_NODES - 1)
+    {
+        mindistance = INF;
+        for (i = 0; i < NUM_NODES; i++)
+        {
+            if (dijkstraTilesDistance[i] < mindistance && !visited[i])
+            {
+                mindistance = dijkstraTilesDistance[i];
+                nextnode = i;
+            }
+        }
+        visited[nextnode] = 1;
+        for (i = 0; i < NUM_NODES; i++)
+        {
+            if (!visited[i])
+            {
+                if (mindistance + dijkstraCost[nextnode*NUM_NODES + i] < dijkstraTilesDistance[i])
+                {
+                    dijkstraTilesDistance[i] = mindistance + dijkstraCost[nextnode*NUM_NODES + i];
+                    dijkstraTilesPath[i] = nextnode;
+                }
+            }
+        }
+        count++;
+    }
+
+    for (i = 0; i < NUM_NODES; i++)
+    {
+        if (dijkstraTilesDistance[i] <= unit->mov)
+        {
+            int nodeX = (i % NODES_WIDTH) - (NODES_WIDTH/2);
+            int nodeY = (i / NODES_WIDTH) - (NODES_WIDTH/2);
+
+            int tileX = unit->tileX + nodeX;
+            int tileY = unit->tileY + nodeY;
+
+            bool unitAlreadyThere = false;
+
+            for (int f = 0; f < friendlyUnits->size(); f++)
+            {
+                Unit* friendlyUnit = friendlyUnits->at(f);
+                if (friendlyUnit->tileX == tileX &&
+                    friendlyUnit->tileY == tileY &&
+                    friendlyUnit != unit)
+                {
+                    unitAlreadyThere = true;
+                    break;
+                }
+            }
+
+            if (!unitAlreadyThere)
+            {
+                blueTiles->push_back(SDL_Point{tileX, tileY});
+            }
+        }
+
+        j = i;
+        do
+        {
+            j = dijkstraTilesPath[j];
+        } while(j != START_NODE);
     }
 }

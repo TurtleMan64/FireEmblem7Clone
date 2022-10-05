@@ -150,16 +150,10 @@ std::unordered_set<int> Unit::getAttackRanges()
     {
         Item item = items[i];
 
-        if (item.isWeapon())
+        if (canUseWeapon(item))
         {
-            WeaponStats stats = item.getWeaponStats();
-
-            if (weaponRank[stats.type] >= stats.rankRequirement && item.usesRemaining > 0)
-            {
-                std::unordered_set<int> range = item.getWeaponRange();
-
-                ranges.insert(range.begin(), range.end());
-            }
+            std::unordered_set<int> range = item.getWeaponRange();
+            ranges.insert(range.begin(), range.end());
         }
     }
 
@@ -172,14 +166,9 @@ std::unordered_set<int> Unit::getEquipWeaponAttackRange()
     {
         Item item = items[i];
 
-        if (item.isWeapon())
+        if (canUseWeapon(item))
         {
-            WeaponStats stats = item.getWeaponStats();
-
-            if (weaponRank[stats.type] >= stats.rankRequirement && item.usesRemaining > 0)
-            {
-                return item.getWeaponRange();
-            }
+            return item.getWeaponRange();
         }
     }
 
@@ -193,14 +182,9 @@ Item* Unit::getEquippedWeapon()
     {
         Item item = items[i];
 
-        if (item.isWeapon())
+        if (canUseWeapon(item))
         {
-            WeaponStats stats = item.getWeaponStats();
-
-            if (weaponRank[stats.type] >= stats.rankRequirement && item.usesRemaining > 0)
-            {
-                return &items[i];
-            }
+            return &items[i];
         }
     }
 
@@ -224,9 +208,43 @@ bool Unit::canUseWeapon(Item weapon)
     {
         WeaponStats stats = weapon.getWeaponStats();
 
-        if (weaponRank[stats.type] >= stats.rankRequirement && weapon.usesRemaining > 0)
+        if (weapon.usesRemaining > 0)
         {
-            return true;
+            switch (weapon.id)
+            {
+                case ManiKatti  : return (classResources.classType == LordCaelin || classResources.classType == BladeLord);
+                case SolKatti   : return (classResources.classType == LordCaelin || classResources.classType == BladeLord);
+                case Rapier     : return (classResources.classType == LordPherae || classResources.classType == KnightLord);
+                case Durandal   : return (classResources.classType == LordPherae || classResources.classType == KnightLord);
+                case WolfBeil   : return (classResources.classType == LordOstia  || classResources.classType == GreatLord);
+                case Armads     : return (classResources.classType == LordOstia  || classResources.classType == GreatLord);
+                case Forblaze   : return (classResources.classType == Archsage);
+                case Ereshkigal : return (classResources.classType == DarkDruid);
+                default         : break;
+            }
+
+            if (weaponRank[stats.type] >= stats.rankRequirement)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool Unit::canUseStaff(Item staff)
+{
+    if (staff.isStaff())
+    {
+        StaffStats stats = staff.getStaffStats();
+
+        if (staff.usesRemaining > 0)
+        {
+            if (weaponRank[Staff] >= stats.rankRequirement)
+            {
+                return true;
+            }
         }
     }
 

@@ -16,6 +16,8 @@ public:
         Battle
     };
 
+    static float fpsSleepBias;
+
     static int frameCount;
 
     static GameState gameState;

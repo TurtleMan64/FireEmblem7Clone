@@ -181,11 +181,17 @@ public:
     ItemId id = None;
     int usesRemaining = 1;
 
+    Item();
+
     Item(ItemId id);
+
+    bool operator ==(const Item& other) const;
 
     void render(int x, int y);
 
     bool isWeapon();
+
+    bool isStaff();
 
     bool isConsumableByUnit(Unit* unit);
 
@@ -193,7 +199,11 @@ public:
 
     std::unordered_set<int> getWeaponRange();
 
+    std::unordered_set<int> getStaffRange();
+
     WeaponStats getWeaponStats();
+
+    StaffStats getStaffStats();
 
     std::string getName();
 };

@@ -15,6 +15,7 @@
 #include "Weapons.hpp"
 #include "ImageAnimation.hpp"
 #include "UnitDisplay.hpp"
+#include "Audio.hpp"
 
 UnitDisplay::Page UnitDisplay::currentPage = PersonalData;
 
@@ -70,6 +71,7 @@ void UnitDisplay::step()
 
     if (Input::pressedLeft())
     {
+        Audio::play(Beep7, 0);
         if (currentPage == PersonalData)
         {
             currentPage = WeaponLevels;
@@ -82,6 +84,7 @@ void UnitDisplay::step()
     }
     else if (Input::pressedRight())
     {
+        Audio::play(Beep7, 0);
         if (currentPage == WeaponLevels)
         {
             currentPage = PersonalData;
@@ -98,6 +101,8 @@ void UnitDisplay::step()
         {
             return;
         }
+
+        Audio::play(Whoosh, 2);
 
         std::vector<Unit*>* units = &Map::unitsPlayer;
         if (isEnemy)
@@ -130,6 +135,7 @@ void UnitDisplay::step()
     }
     else if (Input::pressedB())
     {
+        Audio::play(Beep1, 3);
         Global::transitionToNewState(Global::GameState::Map, 10);
     }
 
@@ -186,7 +192,7 @@ void UnitDisplay::renderMugshot(Unit* unit, bool isEnemy)
         backdropMugshot->imageIndex = 1;
     }
     backdropMugshot->render();
-    SDL_Rect srcRect{(96 - 80)/2, (80 - 72)/2, 80, 72}; //todo dont center in the middle once enemy mugshots are realigned
+    SDL_Rect srcRect{(96 - 80)/2, 0, 80, 72};
     SDL_Rect dstRect{13, 8, 80, 72};
     SDL_RenderCopy(Global::sdlRenderer, unit->sprMugshot->image->getTexture(0), &srcRect, &dstRect);
     Text::renderText(unit->unitResources.displayName, Font::Border, Text::White, 25, 81, Center, 64);
@@ -314,6 +320,14 @@ void UnitDisplay::renderPageItems(Unit* unit, int x, int y)
         if (item.isWeapon())
         {
             if (!unit->canUseWeapon(item))
+            {
+                colorText = {180, 180, 180, 255};
+                colorUses = colorText;
+            }
+        }
+        else if (item.isStaff())
+        {
+            if (!unit->canUseStaff(item))
             {
                 colorText = {180, 180, 180, 255};
                 colorUses = colorText;
