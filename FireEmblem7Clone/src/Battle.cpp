@@ -34,8 +34,7 @@ void Battle::doBattle(Unit* initialAttackingUnit, Unit* initialDefendingUnit)
     int rightAttack = 0;
     int rightHit    = 0;
     int rightCrit   = 0;
-    initialAttackingUnit->calculateCombatStatsVsUnit(initialDefendingUnit, &leftAttack,  &leftHit,  &leftCrit);
-    initialDefendingUnit->calculateCombatStatsVsUnit(initialAttackingUnit, &rightAttack, &rightHit, &rightCrit);
+    initialAttackingUnit->calculateCombatStatsVsUnit(initialDefendingUnit, &leftAttack,  &leftHit,  &leftCrit, &rightAttack, &rightHit, &rightCrit);
 
     if (leftWeapon != nullptr)
     {

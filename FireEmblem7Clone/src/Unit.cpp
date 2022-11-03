@@ -82,6 +82,8 @@ Unit::Unit(std::string unitName, std::string className)
     {
         sprMugshotTiny = new Sprite(unitResources.mugshotTinyPath, 0, 0, false);
     }
+
+    sprBossIcon = new Sprite("res/Images/Sprites/Map/BossIcon", 0, 0, false);
 }
 
 Unit::~Unit()
@@ -98,6 +100,7 @@ Unit::~Unit()
     delete sprMapRunLeftB;
     delete sprMugshot;
     delete sprMugshotTiny;
+    delete sprBossIcon;
 }
 
 void Unit::render(int pixelX, int pixelY, int sprIndex, int viewportPixelOffsetX, int viewportPixelOffsetY)
@@ -141,6 +144,48 @@ void Unit::render(int pixelX, int pixelY, int sprIndex, int viewportPixelOffsetX
     s->y = (int)(viewportPixelOffsetY + pixelY);
     s->imageIndex = Global::frameCount;
     s->render(color);
+
+    if (isBoss && (sprIndex == 0 || sprIndex == 6))
+    {
+        sprBossIcon->x = s->x;
+        sprBossIcon->y = s->y;
+        sprBossIcon->imageIndex = Global::frameCount;
+        sprBossIcon->render();
+    }
+}
+
+void Unit::renderHealthbar(int pixelX, int pixelY, int sprIndex, int viewportPixelOffsetX, int viewportPixelOffsetY)
+{
+    if (hp == maxHp)
+    {
+        return;
+    }
+
+    SDL_SetRenderDrawColor(Global::sdlRenderer, 0, 0, 0, 255);//64, 56, 56, 255);
+
+    SDL_Rect dstRect{
+        pixelX + viewportPixelOffsetX +  1,
+        pixelY + viewportPixelOffsetY + 13,
+        14,
+         3};
+
+    SDL_RenderFillRect(Global::sdlRenderer, &dstRect);
+
+    if (hp > 0)
+    {
+        if (sprIndex < 6)
+        {
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 40, 160, 248, 255);
+        }
+        else
+        {
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 224, 16, 16, 255);
+        }
+
+        SDL_RenderDrawLine(Global::sdlRenderer,
+            pixelX + viewportPixelOffsetX + 2                                , pixelY + viewportPixelOffsetY + 14,
+            pixelX + viewportPixelOffsetX + 2 + (int)(11*(hp/((float)maxHp))), pixelY + viewportPixelOffsetY + 14);
+    }
 }
 
 std::unordered_set<int> Unit::getAttackRanges()
@@ -189,6 +234,30 @@ Item* Unit::getEquippedWeapon()
     }
 
     return nullptr;
+}
+
+void Unit::equipWeapon(Item weapon)
+{
+    for (int i = 0; i < items.size(); i++)
+    {
+        if (items[i] == weapon)
+        {
+            equipWeapon(i);
+            return;
+        }
+    }
+}
+
+void Unit::equipWeapon(int index)
+{
+    if (index == 0 || index >= (int)items.size())
+    {
+        return;
+    }
+
+    Item weapon = items[index];
+    items.erase(items.begin() + index);
+    items.insert(items.begin(), weapon);
 }
 
 int Unit::getAttackSpeedWithWeapon(WeaponStats weaponStats)
@@ -251,9 +320,30 @@ bool Unit::canUseStaff(Item staff)
     return false;
 }
 
-void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* crit)
+void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* crit, int* otherDamage, int* otherHit, int* otherCrit)
 {
-    Item* myWeapon = getEquippedWeapon();
+    Unit::calculateCombatStatsVsUnit(
+        this, tileX, tileY, getEquippedWeapon(),
+        other, other->tileX, other->tileY, other->getEquippedWeapon(),
+        damage, hit, crit,
+        otherDamage, otherHit, otherCrit);
+}
+
+void Unit::calculateCombatStatsVsUnit(
+    Unit* me,    int myTileX,    int myTileY,    Item* myWeapon,
+    Unit* other, int otherTileX, int otherTileY, Item* otherWeapon,
+    int* myDamage,    int* myHit,    int* myCrit,
+    int* otherDamage, int* otherHit, int* otherCrit)
+{
+    calculateCombatStatsVsUnit(me, myTileX, myTileY, myWeapon, other, otherTileX, otherTileY, otherWeapon, myDamage, myHit, myCrit);
+    calculateCombatStatsVsUnit(other, otherTileX, otherTileY, otherWeapon, me, myTileX, myTileY, myWeapon, otherDamage, otherHit, otherCrit);
+}
+
+void Unit::calculateCombatStatsVsUnit(
+    Unit* me,    int myTileX,    int myTileY,    Item* myWeapon,
+    Unit* other, int otherTileX, int otherTileY, Item* otherWeapon,
+    int* damage, int* hit, int* crit)
+{
     if (myWeapon == nullptr)
     {
         *damage = 0;
@@ -262,7 +352,135 @@ void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* c
         return;
     }
 
-    int distanceToOther = Util::getManhattanDistance(this, other);
+    int distanceToOther = Util::getManhattanDistance(myTileX,  myTileY, otherTileX, otherTileY);
+
+    WeaponStats myWeaponStats = myWeapon->getWeaponStats();
+    std::unordered_set<int> range = myWeapon->getWeaponRange();
+
+    if (range.find(distanceToOther) == range.end())
+    {
+        *damage = 0;
+        *hit = 0;
+        *crit = 0;
+        return;
+    }
+
+    WeaponStats otherWeaponStats;
+    if (otherWeapon != nullptr)
+    {
+        otherWeaponStats = otherWeapon->getWeaponStats();
+    }
+
+    int weaponTriangle = Util::getWeaponTriangle(myWeaponStats, otherWeaponStats);
+
+    MapTile myTile = Map::tiles[myTileX + myTileY*Map::tilesWidth];
+    bool usesTile = true;
+    if ((me->classResources.classType == ClassType::PegasusKnight) ||
+        (me->classResources.classType == ClassType::FalconKnight)  ||
+        (me->classResources.classType == ClassType::WyvernRider)   ||
+        (me->classResources.classType == ClassType::WyvernLord))
+    {
+        usesTile = false;
+    }
+
+    MapTile otherTile = Map::tiles[otherTileX + otherTileY*Map::tilesWidth];
+    bool otherUsesTile = true;
+    if ((other->classResources.classType == ClassType::PegasusKnight) ||
+        (other->classResources.classType == ClassType::FalconKnight)  ||
+        (other->classResources.classType == ClassType::WyvernRider)   ||
+        (other->classResources.classType == ClassType::WyvernLord))
+    {
+        otherUsesTile = false;
+    }
+
+    //Attack
+    int supportBonusAttack = 0;
+    bool isMagicWeapon = 
+        (myWeaponStats.type == Anima ||
+         myWeaponStats.type == Light ||
+         myWeaponStats.type == Dark);
+
+    int attack = myWeaponStats.might + weaponTriangle + supportBonusAttack;
+    int otherDef = 0;
+    if (!isMagicWeapon)
+    {
+        attack += me->str;
+        otherDef += other->def;
+
+        if (otherUsesTile)
+        {
+            otherDef += otherTile.defense;
+        }
+    }
+    else
+    {
+        attack += me->mag;
+        otherDef += other->res;
+    }
+
+    int finalDamage = attack - otherDef;
+    if (finalDamage < 0)
+    {
+        finalDamage = 0;
+    }
+    *damage = finalDamage;
+
+
+    //Hit
+    int supportBonusHit = 0;
+    int sRankBonusHit = 0;
+    if (me->weaponRank[myWeaponStats.type] >= S)
+    {
+        sRankBonusHit = 5;
+    }
+    int tacticanBonusHit = 0;
+    int myHit = myWeaponStats.hit + me->skl*2 + me->lck/2 + weaponTriangle*15 + supportBonusHit + sRankBonusHit + tacticanBonusHit;
+
+    //Other avoid
+    int otherSupportBonusAvoid = 0;
+    int otherTerrainBonusAvoid = otherTile.avoid;
+    if (!usesTile)
+    {
+        otherTerrainBonusAvoid = 0;
+    }
+    int otherTacticanBonusAvoid = 0;
+    int otherAvoid = other->getAttackSpeedWithWeapon(otherWeaponStats)*2 + other->lck + otherSupportBonusAvoid + otherTerrainBonusAvoid + otherTacticanBonusAvoid;
+
+    int finalHit = Util::clamp(0, myHit - otherAvoid, 100);
+    *hit = finalHit;
+
+
+    //Crit
+    int supportBonusCrit = 0;
+    int criticalBonus = 0;
+    int sRankBonusCrit = 0;
+    if (me->weaponRank[myWeaponStats.type] >= S)
+    {
+        sRankBonusCrit = 5;
+    }
+    int myCrit = myWeaponStats.crit + me->skl/2 + supportBonusCrit + criticalBonus + sRankBonusCrit;
+
+    //Other Crit evade
+    int otherSupportBonusEvade = 0;
+    int otherTacticanBonusEvade = 0;
+    int otherCritEvade = other->lck + otherSupportBonusEvade + otherTacticanBonusEvade;
+
+    int finalCrit = Util::clamp(0, myCrit - otherCritEvade, 100);
+    *crit = finalCrit;
+}
+
+/*
+void Unit::calculateCombatStatsVsUnit(int myTileX, int myTileY, Item* myWeapon, Unit* other, int* damage, int* hit, int* crit)
+{
+    if (myWeapon == nullptr)
+    {
+        *damage = 0;
+        *hit = 0;
+        *crit = 0;
+        return;
+    }
+
+    int distanceToOther = Util::getManhattanDistance(myTileX,  myTileY, other->tileX, other->tileY);
 
     WeaponStats myWeaponStats = myWeapon->getWeaponStats();
     std::unordered_set<int> range = myWeapon->getWeaponRange();
@@ -284,7 +502,7 @@ void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* c
 
     int weaponTriangle = Util::getWeaponTriangle(myWeaponStats, otherWeaponStats);
 
-    MapTile myTile = Map::tiles[tileX + tileY*Map::tilesWidth];
+    MapTile myTile = Map::tiles[myTileX + myTileY*Map::tilesWidth];
     bool usesTile = true;
     if ((classResources.classType == ClassType::PegasusKnight) ||
         (classResources.classType == ClassType::FalconKnight)  ||
@@ -379,6 +597,139 @@ void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* c
     int finalCrit = Util::clamp(0, myCrit - otherCritEvade, 100);
     *crit = finalCrit;
 }
+*/
+
+/*
+void Unit::calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* crit)
+{
+    calculateCombatStatsVsUnit(tileX, tileY, getEquippedWeapon(), other, damage, hit, crit);
+    //Item* myWeapon = getEquippedWeapon();
+    //if (myWeapon == nullptr)
+    //{
+    //    *damage = 0;
+    //    *hit = 0;
+    //    *crit = 0;
+    //    return;
+    //}
+    //
+    //int distanceToOther = Util::getManhattanDistance(this, other);
+    //
+    //WeaponStats myWeaponStats = myWeapon->getWeaponStats();
+    //std::unordered_set<int> range = myWeapon->getWeaponRange();
+    //
+    //if (range.find(distanceToOther) == range.end())
+    //{
+    //    *damage = 0;
+    //    *hit = 0;
+    //    *crit = 0;
+    //    return;
+    //}
+    //
+    //Item* otherWeapon = other->getEquippedWeapon();
+    //WeaponStats otherWeaponStats;
+    //if (otherWeapon != nullptr)
+    //{
+    //    otherWeaponStats = otherWeapon->getWeaponStats();
+    //}
+    //
+    //int weaponTriangle = Util::getWeaponTriangle(myWeaponStats, otherWeaponStats);
+    //
+    //MapTile myTile = Map::tiles[tileX + tileY*Map::tilesWidth];
+    //bool usesTile = true;
+    //if ((classResources.classType == ClassType::PegasusKnight) ||
+    //    (classResources.classType == ClassType::FalconKnight)  ||
+    //    (classResources.classType == ClassType::WyvernRider)   ||
+    //    (classResources.classType == ClassType::WyvernLord))
+    //{
+    //    usesTile = false;
+    //}
+    //
+    //MapTile otherTile = Map::tiles[other->tileX + other->tileY*Map::tilesWidth];
+    //bool otherUsesTile = true;
+    //if ((other->classResources.classType == ClassType::PegasusKnight) ||
+    //    (other->classResources.classType == ClassType::FalconKnight)  ||
+    //    (other->classResources.classType == ClassType::WyvernRider)   ||
+    //    (other->classResources.classType == ClassType::WyvernLord))
+    //{
+    //    otherUsesTile = false;
+    //}
+    //
+    ////Attack
+    //int supportBonusAttack = 0;
+    //bool isMagicWeapon = 
+    //    (myWeaponStats.type == Anima ||
+    //     myWeaponStats.type == Light ||
+    //     myWeaponStats.type == Dark);
+    //
+    //int attack = myWeaponStats.might + weaponTriangle + supportBonusAttack;
+    //int otherDef = 0;
+    //if (!isMagicWeapon)
+    //{
+    //    attack += str;
+    //    otherDef += other->def;
+    //
+    //    if (otherUsesTile)
+    //    {
+    //        otherDef += otherTile.defense;
+    //    }
+    //}
+    //else
+    //{
+    //    attack += mag;
+    //    otherDef += other->res;
+    //}
+    //
+    //int finalDamage = attack - otherDef;
+    //if (finalDamage < 0)
+    //{
+    //    finalDamage = 0;
+    //}
+    //*damage = finalDamage;
+    //
+    //
+    ////Hit
+    //int supportBonusHit = 0;
+    //int sRankBonusHit = 0;
+    //if (weaponRank[myWeaponStats.type] >= S)
+    //{
+    //    sRankBonusHit = 5;
+    //}
+    //int tacticanBonusHit = 0;
+    //int myHit = myWeaponStats.hit + skl*2 + lck/2 + weaponTriangle*15 + supportBonusHit + sRankBonusHit + tacticanBonusHit;
+    //
+    ////Other avoid
+    //int otherSupportBonusAvoid = 0;
+    //int otherTerrainBonusAvoid = otherTile.avoid;
+    //if (!usesTile)
+    //{
+    //    otherTerrainBonusAvoid = 0;
+    //}
+    //int otherTacticanBonusAvoid = 0;
+    //int otherAvoid = other->getAttackSpeedWithWeapon(otherWeaponStats)*2 + other->lck + otherSupportBonusAvoid + otherTerrainBonusAvoid + otherTacticanBonusAvoid;
+    //
+    //int finalHit = Util::clamp(0, myHit - otherAvoid, 100);
+    //*hit = finalHit;
+    //
+    //
+    ////Crit
+    //int supportBonusCrit = 0;
+    //int criticalBonus = 0;
+    //int sRankBonusCrit = 0;
+    //if (weaponRank[myWeaponStats.type] >= S)
+    //{
+    //    sRankBonusCrit = 5;
+    //}
+    //int myCrit = myWeaponStats.crit + skl/2 + supportBonusCrit + criticalBonus + sRankBonusCrit;
+    //
+    ////Other Crit evade
+    //int otherSupportBonusEvade = 0;
+    //int otherTacticanBonusEvade = 0;
+    //int otherCritEvade = other->lck + otherSupportBonusEvade + otherTacticanBonusEvade;
+    //
+    //int finalCrit = Util::clamp(0, myCrit - otherCritEvade, 100);
+    //*crit = finalCrit;
+}
+*/
 
 //Basically the same as above, but without other unit
 void Unit::calculateBaseCombatStats(int* attack, int* hit, int* avoid, int* crit, int* attackSpeed)

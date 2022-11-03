@@ -109,6 +109,7 @@ public:
     static void renderAttackPreview();
 
     static Sprite* attackingHealthDisplay;
+    static Sprite* attackingStatDisplay;
     static Sprite* attackingMiss;
     static Unit* defendingEnemy;
     static int attackingTimer;
@@ -123,7 +124,7 @@ public:
 
     static std::vector<Sprite*> previewTilesEnemyAll; //Preview for all enemies
 
-    static void createAttackPreviewTiles(Unit* unit, std::unordered_set<int> ranges);
+    static void createAttackPreviewTiles(Unit* unit, std::unordered_set<int> ranges, std::vector<Sprite*>* previewTiles);
     static void createStaffPreviewTiles(Unit* unit, std::unordered_set<int> ranges);
     static std::vector<SDL_Point> calculatePreviewTilesAtTile(int tileX, int tileY, std::unordered_set<int> ranges);
 

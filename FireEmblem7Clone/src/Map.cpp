@@ -101,6 +101,7 @@ Unit* Map::tradingUnit = nullptr;
 
 Sprite* Map::attackingMiss = nullptr;
 Sprite* Map::attackingHealthDisplay = nullptr;
+Sprite* Map::attackingStatDisplay = nullptr;
 Unit* Map::defendingEnemy = nullptr;
 int Map::attackingTimer = 0;
 
@@ -128,6 +129,7 @@ void Map::init()
     attackPreviewMultiplier = new Sprite("res/Images/Sprites/Map/Multipliers",         0,  0, false);
     attackingMiss           = new Sprite("res/Images/Sprites/Map/Miss",                0,  0, false);
     attackingHealthDisplay  = new Sprite("res/Images/Sprites/Map/AttackHealthDisplay", 0,  0, false);
+    attackingStatDisplay    = new Sprite("res/Images/Sprites/Map/AttackStatDisplay",   0,  0, false);
 }
 
 void Map::loadFresh(int mapId)
@@ -256,6 +258,10 @@ void Map::loadFresh(int mapId)
         enemy->weaponRank[Dark ] = std::stoi(line[27]);
         enemy->weaponRank[Staff] = std::stoi(line[28]);
 
+        enemy->behavior = (Behavior)std::stoi(line[29]);
+        enemy->groupId  =           std::stoi(line[30]);
+        enemy->isBoss   =     (bool)std::stoi(line[31]);
+
         unitsEnemy.push_back(enemy);
     }
 
@@ -360,7 +366,14 @@ void Map::playerPhase()
                 Audio::play(Beep3, 0);
                 walkingPath.clear();
                 clearPreviewTiles();
-                Djikstra::calculatePreviewTiles(enemyUnitOnCursor, &previewTilesBlue, &previewTilesRed, &unitsEnemy, &unitsPlayer);
+                if (enemyUnitOnCursor->behavior == Behavior::NoMove)
+                {
+                    createAttackPreviewTiles(enemyUnitOnCursor, enemyUnitOnCursor->getAttackRanges(), &previewTilesRed);
+                }
+                else
+                {
+                    Djikstra::calculatePreviewTiles(enemyUnitOnCursor, &previewTilesBlue, &previewTilesRed, &unitsEnemy, &unitsPlayer);
+                }
             }
             else
             {
@@ -400,28 +413,31 @@ void Map::playerPhase()
                 else
                 {
                     std::unordered_set<int> allTiles;
-                    std::vector<Sprite*> blues;
-                    std::vector<Sprite*> reds;
 
                     for (int i = 0; i < unitsEnemy.size(); i++)
                     {
-                        Djikstra::calculatePreviewTiles(unitsEnemy[i], &blues, &reds, &unitsPlayer, &unitsEnemy);
-
-                        for (int t = 0; t < blues.size(); t++)
+                        if (unitsEnemy[i]->behavior == Behavior::NoMove)
                         {
-                            Sprite* s = blues[t];
-                            allTiles.insert(s->x | (s->y << 16));
-                            delete s;
+                            std::vector<Sprite*> reds;
+                            createAttackPreviewTiles(unitsEnemy[i], unitsEnemy[i]->getAttackRanges(), &reds);
+                            for (int t = 0; t < reds.size(); t++)
+                            {
+                                Sprite* s = reds[t];
+                                allTiles.insert(s->x | (s->y << 16));
+                                delete s;
+                            }
+                            reds.clear();
                         }
-                        blues.clear();
-
-                        for (int t = 0; t < reds.size(); t++)
+                        else
                         {
-                            Sprite* s = reds[t];
-                            allTiles.insert(s->x | (s->y << 16));
-                            delete s;
+                            std::vector<SDL_Point> reds;
+                            Djikstra::calculateRedTiles(unitsEnemy[i], &reds, &unitsEnemy, &unitsPlayer);
+                            for (int t = 0; t < reds.size(); t++)
+                            {
+                                SDL_Point s = reds[t];
+                                allTiles.insert(s.x | (s.y << 16));
+                            }
                         }
-                        reds.clear();
                     }
 
                     for (auto itr = allTiles.begin(); itr != allTiles.end(); ++itr)
@@ -508,7 +524,7 @@ void Map::playerPhase()
                     cursorY == selectedUnit->tileY)
                 {
                     clearPreviewTiles();
-                    createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+                    createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
                     calculateMenuChoices();
                     mapState = UnitMenu;
                 }
@@ -583,8 +599,10 @@ void Map::playerPhase()
         {
             selectedUnit->tileX = cursorX;
             selectedUnit->tileY = cursorY;
+            selectedUnit->x = cursorX*16;
+            selectedUnit->y = cursorY*16;
             clearPreviewTiles();
-            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
             calculateMenuChoices();
             mapState = UnitMenu;
         }
@@ -685,7 +703,7 @@ void Map::playerPhase()
         else if (Input::pressedB())
         {
             clearPreviewTiles();
-            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
             calculateMenuChoices();
             mapState = UnitMenu;
         }
@@ -749,7 +767,7 @@ void Map::playerPhase()
                 if (selectedUnit->items.size() == 0)
                 {
                     clearPreviewTiles();
-                    createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+                    createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
                     calculateMenuChoices();
                     mapState = UnitMenu;
                 }
@@ -798,7 +816,7 @@ void Map::playerPhase()
             if (enemyOnCursor != nullptr)
             {
                 defendingEnemy = enemyOnCursor;
-                attackingTimer = 0;
+                attackingTimer = -10;
 
                 Battle::doBattle(selectedUnit, enemyOnCursor);
 
@@ -811,7 +829,7 @@ void Map::playerPhase()
         else if (Input::pressedB())
         {
             clearPreviewTiles();
-            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
             calculateMenuChoices();
             mapState = UnitMenu;
         }
@@ -856,133 +874,212 @@ void Map::playerPhase()
             toMove = {0, -1};
         }
 
-        int turnIdx = attackingTimer/60; //1 second per attack
-        int turnTimer = attackingTimer % 60;
-
-        TurnResult turn = Battle::results[turnIdx + 1];
-
-        int turnScale = 1;
-        int attackingIndex = playerDir;
-        int defendingIndex = 6;
-        if (turn.unitDefending == selectedUnit)
+        if (attackingTimer < 0) // Have some padding time before battle starts
         {
-            attackingIndex = enemyDir;
-            defendingIndex = 0;
-            turnScale = -1;
-        }
+            TurnResult turn = Battle::results[0];
 
-        if (turnTimer >= 22 && turnTimer < 38)
-        {
-            if (turnTimer < 30)
+            int turnScale = 1;
+            int attackingIndex = playerDir;
+            int defendingIndex = 6;
+            if (turn.unitDefending == selectedUnit)
             {
-                turn.unitAttacking->x += toMove.x*turnScale;
-                turn.unitAttacking->y += toMove.y*turnScale;
-            }
-            else
-            {
-                turn.unitAttacking->x -= toMove.x*turnScale;
-                turn.unitAttacking->y -= toMove.y*turnScale;
-            }
-        }
-
-        SDL_Color colorDefending{255, 255, 255, 255};
-        if (turn.hit && turnTimer >= 30 && turnTimer < 45)
-        {
-            colorDefending.r = (Uint8)((turnTimer - 30)*16);
-            colorDefending.g = (Uint8)((turnTimer - 30)*16);
-            colorDefending.b = (Uint8)((turnTimer - 30)*16);
-        }
-
-        if (turnTimer == 30)
-        {
-            if (!turn.hit)
-            {
-                Audio::play(AttackMiss, -1);
-            }
-            else if (turn.crit)
-            {
-                Audio::play(AttackCritKill, -1);
-            }
-            else if (turn.unitLeftHp == 0 || turn.unitRightHp == 0)
-            {
-                Audio::play(AttackKill, -1);
-            }
-            else
-            {
-                Audio::play(AttackHit, -1);
-            }
-        }
-
-        if (turnTimer == 59 && (turn.unitLeftHp <= 0 || turn.unitRightHp <= 0))
-        {
-            Audio::play(AttackDieFade, -1);
-        }
-
-        turn.unitDefending->render(turn.unitDefending->x, turn.unitDefending->y, defendingIndex, viewportPixelX, viewportPixelY, colorDefending);
-        turn.unitAttacking->render(turn.unitAttacking->x, turn.unitAttacking->y, attackingIndex, viewportPixelX, viewportPixelY);
-
-        if (!turn.hit && turnTimer >= 16 && turnTimer < 44)
-        {
-            attackingMiss->render(turn.unitDefending->x + 8 + viewportPixelX, turn.unitDefending->y + 8 + viewportPixelY, turnTimer - 16);
-        }
-
-        attackingHealthDisplay->y = 16;
-        if (defendingEnemy->tileY - viewportY < 5)
-        {
-            attackingHealthDisplay->y = 112;
-        }
-        attackingHealthDisplay->render( 40, attackingHealthDisplay->y, 0);
-        attackingHealthDisplay->render(120, attackingHealthDisplay->y, 1);
-
-        int dispIdx = (int)floor((attackingTimer - 30)/60.0f) + 1;
-        TurnResult displayTurn = Battle::results[dispIdx];
-        Text::renderText(std::to_string(displayTurn.unitRightHp),   Font::Border, Text::White,  46, attackingHealthDisplay->y + 14, Right,  16);
-        Text::renderText(std::to_string(displayTurn.unitLeftHp),    Font::Border, Text::White, 126, attackingHealthDisplay->y + 14, Right,  16);
-        Text::renderText(selectedUnit->unitResources.displayName,   Font::Border, Text::White,  49, attackingHealthDisplay->y +  1, Center, 60);
-        Text::renderText(defendingEnemy->unitResources.displayName, Font::Border, Text::White, 129, attackingHealthDisplay->y +  1, Center, 60);
-
-        float hpPerc = ((float)displayTurn.unitRightHp)/selectedUnit->maxHp;
-        SDL_Rect hpBar;
-        hpBar.x = 108;
-        hpBar.y = attackingHealthDisplay->y + 21;
-        hpBar.w = (int)(-41*(1 - hpPerc));
-        hpBar.h = 2;
-        SDL_SetRenderDrawColor(Global::sdlRenderer, 115, 49, 0, 255);
-        SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
-
-        hpPerc = ((float)displayTurn.unitLeftHp)/defendingEnemy->maxHp;
-        hpBar.x = 188;
-        hpBar.w = (int)(-41*(1 - hpPerc));
-        SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
-        SDL_SetRenderDrawColor(Global::sdlRenderer, 255, 255, 255, 255);
-
-
-        attackingTimer++;
-        if (attackingTimer >= (Battle::results.size() - 1)*60)
-        {
-            attackingTimer = 0;
-
-            selectedUnit->isUsed = true;
-
-            if (selectedUnit->hp <= 0)
-            {
-                unitsPlayer.erase(unitsPlayer.begin() + Util::getIndex(&unitsPlayer, selectedUnit));
-                delete selectedUnit;
-                selectedUnit = nullptr;
+                attackingIndex = enemyDir;
+                defendingIndex = 0;
+                turnScale = -1;
             }
 
-            if (defendingEnemy->hp <= 0)
+            turn.unitDefending->render(turn.unitDefending->x, turn.unitDefending->y, defendingIndex, viewportPixelX, viewportPixelY);
+            turn.unitAttacking->render(turn.unitAttacking->x, turn.unitAttacking->y, attackingIndex, viewportPixelX, viewportPixelY);
+
+            attackingHealthDisplay->y = 16;
+            if (defendingEnemy->tileY - viewportY < 5)
             {
-                unitsEnemy.erase(unitsEnemy.begin() + Util::getIndex(&unitsEnemy, defendingEnemy));
-                delete defendingEnemy;
-                defendingEnemy = nullptr;
+                attackingHealthDisplay->y = 112;
+            }
+            attackingHealthDisplay->render( 40, attackingHealthDisplay->y, 0);
+            attackingHealthDisplay->render(120, attackingHealthDisplay->y, 1);
+
+            attackingStatDisplay->y = attackingHealthDisplay->y;
+            attackingStatDisplay->render(  0, attackingStatDisplay->y, 0);
+            attackingStatDisplay->render(200, attackingStatDisplay->y, 3);
+
+            Text::renderText(std::to_string(turn.unitLeftAtk),  Font::Border, Text::Blue,  12, attackingStatDisplay->y +  1, Right, 24);
+            Text::renderText(std::to_string(turn.unitLeftHit),  Font::Border, Text::Blue,  12, attackingStatDisplay->y + 17, Right, 24);
+            Text::renderText(std::to_string(turn.unitLeftCrt),  Font::Border, Text::Blue,  12, attackingStatDisplay->y + 33, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightAtk), Font::Border, Text::Blue, 198, attackingStatDisplay->y +  1, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightHit), Font::Border, Text::Blue, 198, attackingStatDisplay->y + 17, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightCrt), Font::Border, Text::Blue, 198, attackingStatDisplay->y + 33, Right, 24);
+
+            TurnResult displayTurn = Battle::results[0];
+            Text::renderText(std::to_string(displayTurn.unitRightHp),   Font::Border, Text::White,  46, attackingHealthDisplay->y + 14, Right,  16);
+            Text::renderText(std::to_string(displayTurn.unitLeftHp),    Font::Border, Text::White, 126, attackingHealthDisplay->y + 14, Right,  16);
+            Text::renderText(selectedUnit->unitResources.displayName,   Font::Border, Text::White,  49, attackingHealthDisplay->y +  1, Center, 60);
+            Text::renderText(defendingEnemy->unitResources.displayName, Font::Border, Text::White, 129, attackingHealthDisplay->y +  1, Center, 60);
+
+            float hpPerc = ((float)displayTurn.unitRightHp)/selectedUnit->maxHp;
+            SDL_Rect hpBar;
+            hpBar.x = 108;
+            hpBar.y = attackingHealthDisplay->y + 21;
+            hpBar.w = (int)(-41*(1 - hpPerc));
+            hpBar.h = 2;
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 115, 49, 0, 255);
+            SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
+
+            hpPerc = ((float)displayTurn.unitLeftHp)/defendingEnemy->maxHp;
+            hpBar.x = 188;
+            hpBar.w = (int)(-41*(1 - hpPerc));
+            SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 255, 255, 255, 255);
+
+            attackingTimer++;
+        }
+        else // Animate the battle taking place
+        {
+            int turnIdx = attackingTimer/60; //1 second per attack
+            int turnTimer = (attackingTimer + 60) % 60;
+
+            TurnResult turn = Battle::results[turnIdx + 1];
+
+            int turnScale = 1;
+            int attackingIndex = playerDir;
+            int defendingIndex = 6;
+            if (turn.unitDefending == selectedUnit)
+            {
+                attackingIndex = enemyDir;
+                defendingIndex = 0;
+                turnScale = -1;
             }
 
-            resetNeutralHudDescriptions();
-            clearPreviewTiles();
-            clearPreviewTilesEnemyAll();
-            mapState = Neutral;
+            if (turnTimer >= 22 && turnTimer < 38)
+            {
+                if (turnTimer < 30)
+                {
+                    turn.unitAttacking->x += toMove.x*turnScale;
+                    turn.unitAttacking->y += toMove.y*turnScale;
+                }
+                else
+                {
+                    turn.unitAttacking->x -= toMove.x*turnScale;
+                    turn.unitAttacking->y -= toMove.y*turnScale;
+                }
+            }
+
+            SDL_Color colorDefending{255, 255, 255, 255};
+            if (turn.hit && turnTimer >= 30 && turnTimer < 45)
+            {
+                colorDefending.r = (Uint8)((turnTimer - 30)*16);
+                colorDefending.g = (Uint8)((turnTimer - 30)*16);
+                colorDefending.b = (Uint8)((turnTimer - 30)*16);
+            }
+
+            if (turnTimer == 30)
+            {
+                if (!turn.hit)
+                {
+                    Audio::play(AttackMiss, -1);
+                }
+                else if (turn.crit)
+                {
+                    Audio::play(AttackCritKill, -1);
+                }
+                else if (turn.unitLeftHp == 0 || turn.unitRightHp == 0)
+                {
+                    Audio::play(AttackKill, -1);
+                }
+                else
+                {
+                    Audio::play(AttackHit, -1);
+                }
+            }
+
+            if (turnTimer == 59 && (turn.unitLeftHp <= 0 || turn.unitRightHp <= 0))
+            {
+                Audio::play(AttackDieFade, -1);
+            }
+
+            turn.unitDefending->render(turn.unitDefending->x, turn.unitDefending->y, defendingIndex, viewportPixelX, viewportPixelY, colorDefending);
+            turn.unitAttacking->render(turn.unitAttacking->x, turn.unitAttacking->y, attackingIndex, viewportPixelX, viewportPixelY);
+
+            if (!turn.hit && turnTimer >= 16 && turnTimer < 44)
+            {
+                attackingMiss->render(turn.unitDefending->x + 8 + viewportPixelX, turn.unitDefending->y + 8 + viewportPixelY, turnTimer - 16);
+            }
+
+            attackingHealthDisplay->y = 16;
+            if (defendingEnemy->tileY - viewportY < 5)
+            {
+                attackingHealthDisplay->y = 112;
+            }
+            attackingHealthDisplay->render( 40, attackingHealthDisplay->y, 0);
+            attackingHealthDisplay->render(120, attackingHealthDisplay->y, 1);
+
+            attackingStatDisplay->y = attackingHealthDisplay->y;
+            attackingStatDisplay->render(  0, attackingStatDisplay->y, 0);
+            attackingStatDisplay->render(200, attackingStatDisplay->y, 3);
+
+            Text::renderText(std::to_string(turn.unitLeftAtk),  Font::Border, Text::Blue,  12, attackingStatDisplay->y +  1, Right, 24);
+            Text::renderText(std::to_string(turn.unitLeftHit),  Font::Border, Text::Blue,  12, attackingStatDisplay->y + 17, Right, 24);
+            Text::renderText(std::to_string(turn.unitLeftCrt),  Font::Border, Text::Blue,  12, attackingStatDisplay->y + 33, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightAtk), Font::Border, Text::Blue, 198, attackingStatDisplay->y +  1, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightHit), Font::Border, Text::Blue, 198, attackingStatDisplay->y + 17, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightCrt), Font::Border, Text::Blue, 198, attackingStatDisplay->y + 33, Right, 24);
+
+            int dispIdx = (int)floor((attackingTimer - 30)/60.0f) + 1;
+            if (dispIdx < 0)
+            {
+                dispIdx = 0;
+            }
+            TurnResult displayTurn = Battle::results[dispIdx];
+
+            Text::renderText(std::to_string(displayTurn.unitRightHp),   Font::Border, Text::White,  46, attackingHealthDisplay->y + 14, Right,  16);
+            Text::renderText(std::to_string(displayTurn.unitLeftHp),    Font::Border, Text::White, 126, attackingHealthDisplay->y + 14, Right,  16);
+            Text::renderText(selectedUnit->unitResources.displayName,   Font::Border, Text::White,  49, attackingHealthDisplay->y +  1, Center, 60);
+            Text::renderText(defendingEnemy->unitResources.displayName, Font::Border, Text::White, 129, attackingHealthDisplay->y +  1, Center, 60);
+
+            float hpPerc = ((float)displayTurn.unitRightHp)/selectedUnit->maxHp;
+            SDL_Rect hpBar;
+            hpBar.x = 108;
+            hpBar.y = attackingHealthDisplay->y + 21;
+            hpBar.w = (int)(-41*(1 - hpPerc));
+            hpBar.h = 2;
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 115, 49, 0, 255);
+            SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
+
+            hpPerc = ((float)displayTurn.unitLeftHp)/defendingEnemy->maxHp;
+            hpBar.x = 188;
+            hpBar.w = (int)(-41*(1 - hpPerc));
+            SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 255, 255, 255, 255);
+
+
+            attackingTimer++;
+            if (attackingTimer >= ((int)Battle::results.size() - 1)*60)
+            {
+                attackingTimer = 0;
+
+                selectedUnit->isUsed = true;
+
+                if (selectedUnit->hp <= 0)
+                {
+                    unitsPlayer.erase(unitsPlayer.begin() + Util::getIndex(&unitsPlayer, selectedUnit));
+                    delete selectedUnit;
+                    selectedUnit = nullptr;
+                }
+
+                if (defendingEnemy->hp <= 0)
+                {
+                    unitsEnemy.erase(unitsEnemy.begin() + Util::getIndex(&unitsEnemy, defendingEnemy));
+                    delete defendingEnemy;
+                    defendingEnemy = nullptr;
+                }
+
+                resetNeutralHudDescriptions();
+                clearPreviewTiles();
+                clearPreviewTilesEnemyAll();
+                mapState = Neutral;
+            }
         }
+
         break;
     }
 
@@ -1011,7 +1108,7 @@ void Map::playerPhase()
         else if (Input::pressedB())
         {
             clearPreviewTiles();
-            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
             calculateMenuChoices();
             mapState = UnitMenu;
         }
@@ -1114,7 +1211,7 @@ void Map::playerPhase()
             else
             {
                 clearPreviewTiles();
-                createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+                createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
                 calculateMenuChoices();
                 mapState = UnitMenu;
             }
@@ -1217,7 +1314,7 @@ void Map::playerPhase()
         else if (Input::pressedB())
         {
             clearPreviewTiles();
-            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange());
+            createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
             calculateMenuChoices();
             mapState = UnitMenu;
         }
@@ -1352,134 +1449,442 @@ void Map::enemyPhase()
 
         Unit* enemy = unitsEnemy[enemyIdx];
 
-        // Need to make a copy of inventory because we move thigns around during calculations.
-        std::vector<Item> originalEnemyInventory;
-        for (Item item : enemy->items)
-        {
-            originalEnemyInventory.push_back(item);
-        }
-
         long long maxScore = 0;
 
-        std::vector<SDL_Point> walkableTiles;
-        Djikstra::calculateBlueTiles(enemy, &walkableTiles, &unitsEnemy, &unitsPlayer);
-        for (int i = 0; i < (int)walkableTiles.size(); i++)
+        if (enemy->behavior == Behavior::NoMove)
         {
-            SDL_Point tile = walkableTiles[i];
-            for (int j = 0; j < (int)originalEnemyInventory.size(); j++)
+            // Check for enemies we can attack from current position.
+            for (int j = 0; j < (int)enemy->items.size(); j++)
             {
-                // Put the weapon at the startt of the vector so that it is considered the "equipped" weapon during calculations.
-                enemy->items.clear();
-                enemy->items.push_back(originalEnemyInventory[j]);
-                Item item = originalEnemyInventory.at(j);
+                Item item = enemy->items.at(j);
 
                 if (item.isWeapon() && enemy->canUseWeapon(item))
                 {
                     std::unordered_set<int> ranges = item.getWeaponRange();
-                    std::vector<SDL_Point> redTiles = calculatePreviewTilesAtTile(tile.x, tile.y, ranges);
+                    std::vector<SDL_Point> redTiles = calculatePreviewTilesAtTile(enemy->tileX, enemy->tileY, ranges);
                     std::vector<Unit*> unitsICanAttack = getUnitsInTiles(&unitsPlayer, &redTiles);
                     
                     for (Unit* attackableUnit : unitsICanAttack)
                     {
-                        // Place the unit on the tile he will attack from to calculate stats.
-                        int enemyOriginalTileX = enemy->tileX;
-                        int enemyOriginalTileY = enemy->tileY;
-                        enemy->tileX = tile.x;
-                        enemy->tileY = tile.y;
-
                         int myAttack     = 0;
                         int myHit        = 0;
                         int myCrit       = 0;
                         int playerAttack = 0;
                         int playerHit    = 0;
                         int playerCrit   = 0;
-                        enemy->calculateCombatStatsVsUnit(attackableUnit, &myAttack, &myHit, &myCrit);
-                        attackableUnit->calculateCombatStatsVsUnit(enemy, &playerAttack, &playerHit, &playerCrit);
+                        Unit::calculateCombatStatsVsUnit(
+                            enemy, enemy->tileX, enemy->tileY, &item, 
+                            attackableUnit, attackableUnit->tileX, attackableUnit->tileY, attackableUnit->getEquippedWeapon(), 
+                            &myAttack, &myHit, &myCrit,
+                            &playerAttack, &playerHit, &playerCrit);
 
-                        // Put the enemy back in their original tile.
-                        enemy->tileX = enemyOriginalTileX;
-                        enemy->tileY = enemyOriginalTileY;
+                        long long score = myAttack*myHit*(myCrit + 50LL)*(150LL - playerAttack)*(200LL - playerHit)*(200LL - playerCrit);
 
-                        long long scoreOffense = myAttack*myHit*(myCrit+100LL)*(150LL - playerAttack)*(200LL - playerHit)*(200LL - playerCrit);
-
-                        if (scoreOffense > maxScore)
+                        if (score > maxScore)
                         {
-                            maxScore = scoreOffense;
-                            enemyTileToAttackFrom = tile;
+                            maxScore = score;
+                            enemyTileToAttackFrom = { enemy->tileX, enemy->tileY };
                             unitEnemyWillAttack = attackableUnit;
                             weaponEnemyAttacksWith = item;
                         }
                     }
                 }
             }
-        }
 
-        if (maxScore > 0) // we found someone we can attack, start walking towards them.
-        {
-            // First we need to order the items so that the attacking weapon is at the start of the inventory.
-            enemy->items.clear();
-            enemy->items.push_back(weaponEnemyAttacksWith);
-            bool alreadyFoundUsedWeapon = false;
-            for (Item item : originalEnemyInventory)
+            if (maxScore > 0)
             {
-                if (item == weaponEnemyAttacksWith)
+                // Equip the best weapon.
+                enemy->equipWeapon(weaponEnemyAttacksWith);
+
+                // Start the battle.
+                Battle::doBattle(enemy, unitEnemyWillAttack);
+                mapState = EnemyPhaseWaitingForAttackToFinish;
+            }
+            else
+            {
+                // No one we can attack, do nothing.
+                enemyIdx--;
+                enemy->isUsed = true;
+            }
+        }
+        else if (enemy->behavior == Behavior::Roam)
+        {
+            std::vector<SDL_Point> walkableTiles;
+            Djikstra::calculateBlueTiles(enemy, &walkableTiles, &unitsEnemy, &unitsPlayer);
+
+            // Find someone in range that we can attack this turn.
+            for (int i = 0; i < (int)walkableTiles.size(); i++)
+            {
+                SDL_Point tile = walkableTiles[i];
+                for (int j = 0; j < (int)enemy->items.size(); j++)
                 {
-                    if (!alreadyFoundUsedWeapon)
+                    Item item = enemy->items.at(j);
+
+                    if (item.isWeapon() && enemy->canUseWeapon(item))
                     {
-                        alreadyFoundUsedWeapon = true; //this is the weapon we already added, so dont add it again.   
+                        std::unordered_set<int> ranges = item.getWeaponRange();
+                        std::vector<SDL_Point> redTiles = calculatePreviewTilesAtTile(tile.x, tile.y, ranges);
+                        std::vector<Unit*> unitsICanAttack = getUnitsInTiles(&unitsPlayer, &redTiles);
+                    
+                        for (Unit* attackableUnit : unitsICanAttack)
+                        {
+                            int myAttack     = 0;
+                            int myHit        = 0;
+                            int myCrit       = 0;
+                            int playerAttack = 0;
+                            int playerHit    = 0;
+                            int playerCrit   = 0;
+                            Unit::calculateCombatStatsVsUnit(
+                                enemy, tile.x, tile.y, &item, 
+                                attackableUnit, attackableUnit->tileX, attackableUnit->tileY, attackableUnit->getEquippedWeapon(), 
+                                &myAttack, &myHit, &myCrit,
+                                &playerAttack, &playerHit, &playerCrit);
+
+                            long long score = myAttack*myHit*(myCrit + 50LL)*(150LL - playerAttack)*(200LL - playerHit)*(200LL - playerCrit);
+
+                            if (score > maxScore)
+                            {
+                                maxScore = score;
+                                enemyTileToAttackFrom = tile;
+                                unitEnemyWillAttack = attackableUnit;
+                                weaponEnemyAttacksWith = item;
+                            }
+                        }
                     }
-                    else
-                    {
-                        enemy->items.push_back(item); //we had 2 or more identical copies of the weapon, so add them.
-                    }
+                }
+            }
+
+            if (maxScore > 0) // we found someone we can attack, start walking towards them.
+            {
+                // Equip the best weapon.
+                enemy->equipWeapon(weaponEnemyAttacksWith);
+
+                // Already at the tile, no need to walk there.
+                if (enemyTileToAttackFrom.x == enemy->tileX && enemyTileToAttackFrom.y == enemy->tileY)
+                {
+                    Battle::doBattle(enemy, unitEnemyWillAttack);
+                    mapState = EnemyPhaseWaitingForAttackToFinish;
                 }
                 else
                 {
-                    enemy->items.push_back(item);
+                    Djikstra::generateWalkingPath(enemy, enemyTileToAttackFrom.x, enemyTileToAttackFrom.y, &enemyWalkingPath);
+
+                    //start walking
+                    enemyWalkingTimer = (int)enemyWalkingPath.size()*8 - 9; //8 frames per tile
+
+                    mapState = EnemyPhaseWaitingForUnitToMove;
+                    enemyStateAfterCurrentState = EnemyPhaseWaitingForAttackToFinish;
+                }
+            }
+            else //there isnt anyone we can do damage to in our range, so head for the closest enemy we can attack
+            {
+                int closestDistance = 10000000;
+                SDL_Point closestTileICanAttackFrom{enemy->tileX, enemy->tileY};
+
+                // go through all the tiles we can ever reach, and calculate who we can attack. keep track of the shortest one.
+                for (int x = 0; x < tilesWidth; x++)
+                {
+                    for (int y = 0; y < tilesHeight; y++)
+                    {
+                        int distToTile = Djikstra::distanceToTile(enemy, x, y);
+                        if (distToTile < closestDistance)
+                        {
+                            for (int j = 0; j < (int)enemy->items.size(); j++)
+                            {
+                                Item item = enemy->items.at(j);
+
+                                if (item.isWeapon() && enemy->canUseWeapon(item))
+                                {
+                                    std::unordered_set<int> ranges = item.getWeaponRange();
+                                    std::vector<SDL_Point> redTiles = Map::calculatePreviewTilesAtTile(x, y, ranges);
+                                    std::vector<Unit*> unitsICanAttack = getUnitsInTiles(&unitsPlayer, &redTiles);
+                    
+                                    for (Unit* attackableUnit : unitsICanAttack)
+                                    {
+                                        int myAttack     = 0;
+                                        int myHit        = 0;
+                                        int myCrit       = 0;
+                                        int playerAttack = 0;
+                                        int playerHit    = 0;
+                                        int playerCrit   = 0;
+                                        Unit::calculateCombatStatsVsUnit(
+                                            enemy, x, y, &item, 
+                                            attackableUnit, attackableUnit->tileX, attackableUnit->tileY, attackableUnit->getEquippedWeapon(), 
+                                            &myAttack, &myHit, &myCrit,
+                                            &playerAttack, &playerHit, &playerCrit);
+
+                                        // Make sure we can at least do some damage.
+                                        long long score = myAttack*myHit;
+
+                                        if (score > 0)
+                                        {
+                                            //maxScore = score;
+                                            //enemyTileToAttackFrom = tile;
+                                            //unitEnemyWillAttack = attackableUnit;
+                                            //weaponEnemyAttacksWith = item;
+                                            closestDistance = distToTile;
+                                            closestTileICanAttackFrom = SDL_Point{x, y};
+
+                                            // Break out to the next tile to see if theres some other tile that's closer.
+                                            j = 100000;
+                                            break;
+                                        }
+                                    }
+
+                                    //for (SDL_Point redTile : redTiles)
+                                    //{
+                                    //    bool breaked = false;
+                                    //    for (Unit* player : unitsPlayer)
+                                    //    {
+                                    //        if (player->tileX == redTile.x && player->tileY == redTile.y)
+                                    //        {
+                                    //            closestDistance = distToTile;
+                                    //            closestTileICanAttackFrom = SDL_Point{x, y};
+                                    //            breaked = true;
+                                    //            break;
+                                    //        }
+                                    //    }
+                                    //
+                                    //    if (breaked)
+                                    //    {
+                                    //        break;
+                                    //    }
+                                    //}
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (closestDistance < 10000000) //theres someone we can attack, head for them
+                {
+                    int dx = std::abs(closestTileICanAttackFrom.x - enemy->tileX);
+                    int dy = std::abs(closestTileICanAttackFrom.y - enemy->tileY);
+
+                    if (dx == 0 && dy == 0)
+                    {
+                        //we are already there. shouldnt happen.
+                        printf(" heading to someone i can attack, should have already been there.\n");
+                        enemyIdx--;
+                        enemy->isUsed = true;
+                    }
+                    else
+                    {
+                        Djikstra::generateWalkingPath(enemy, closestTileICanAttackFrom.x, closestTileICanAttackFrom.y, &enemyWalkingPath, true, &unitsEnemy);
+
+                        // There is someone we can attack on the map, but we can't get any closer to them right now.
+                        if (enemyWalkingPath.size() == 1)
+                        {
+                            enemyIdx--;
+                            enemy->isUsed = true;
+                        }
+                        else
+                        {
+                            //start walking
+                            enemyWalkingTimer = (int)enemyWalkingPath.size()*8 - 9; //8 frames per tile
+
+                            mapState = EnemyPhaseWaitingForUnitToMove;
+                            enemyStateAfterCurrentState = EnemyPhaseCalculating;
+                        }
+                    }
+                }
+                else //no one that we can attack from anywhere, sit and contemplate life
+                {
+                    enemyIdx--;
+                    enemy->isUsed = true;
+                }
+            }
+        }
+        else if (enemy->behavior == Behavior::HeadForSieze)
+        {
+            int dx = std::abs(seizeTile.x - enemy->tileX);
+            int dy = std::abs(seizeTile.y - enemy->tileY);
+
+            SDL_Point finalPosition = {enemy->tileX, enemy->tileY};
+            bool isAtFinalSpot = false;
+                
+            if (dx == 0 && dy == 0)
+            {
+                isAtFinalSpot = true;
+            }
+            else
+            {
+                std::vector<SDL_Point> walkableTiles;
+                Djikstra::calculateBlueTiles(enemy, &walkableTiles, &unitsEnemy, nullptr); // Generate the path as if we can walk through blue units.
+
+                Djikstra::generateWalkingPath(enemy, seizeTile.x, seizeTile.y, &enemyWalkingPath, true, &unitsEnemy);
+
+                // Now make the blue units be walls, so we hit them and initiate combat with them.
+                Djikstra::trimPath(enemy, &enemyWalkingPath, &unitsPlayer, &unitsEnemy);
+
+                if (enemyWalkingPath.size() == 1) // We are already at the tile.
+                {
+                    isAtFinalSpot = true;
+                }
+                else
+                {
+                    finalPosition = enemyWalkingPath[0];
                 }
             }
 
-
-            Djikstra::generateWalkingPath(enemy, enemyTileToAttackFrom.x, enemyTileToAttackFrom.y, &enemyWalkingPath);
-
-            //start walking
-            enemyWalkingTimer = (int)enemyWalkingPath.size()*8 - 9; //8 frames per tile
-
-            mapState = EnemyPhaseWaitingForUnitToMove;
-            enemyStateAfterCurrentState = EnemyPhaseWaitingForAttackToFinish;
-        }
-        else //there arent anyone we can do damage to, do nothing.
-        {
-            // Restore the original inventory
-            enemy->items.clear();
-            for (Item item : originalEnemyInventory)
+            // Check for enemies we can attack at our final position.
+            for (int j = 0; j < (int)enemy->items.size(); j++)
             {
-                enemy->items.push_back(item);
+                Item item = enemy->items.at(j);
+
+                if (item.isWeapon() && enemy->canUseWeapon(item))
+                {
+                    std::unordered_set<int> ranges = item.getWeaponRange();
+                    std::vector<SDL_Point> redTiles = calculatePreviewTilesAtTile(finalPosition.x, finalPosition.y, ranges);
+                    std::vector<Unit*> unitsICanAttack = getUnitsInTiles(&unitsPlayer, &redTiles);
+                    
+                    for (Unit* attackableUnit : unitsICanAttack)
+                    {
+                        int myAttack     = 0;
+                        int myHit        = 0;
+                        int myCrit       = 0;
+                        int playerAttack = 0;
+                        int playerHit    = 0;
+                        int playerCrit   = 0;
+                        Unit::calculateCombatStatsVsUnit(
+                            enemy, finalPosition.x, finalPosition.y, &item, 
+                            attackableUnit, attackableUnit->tileX, attackableUnit->tileY, attackableUnit->getEquippedWeapon(), 
+                            &myAttack, &myHit, &myCrit,
+                            &playerAttack, &playerHit, &playerCrit);
+
+                        long long score = myAttack*myHit*(myCrit + 50LL)*(150LL - playerAttack)*(200LL - playerHit)*(200LL - playerCrit);
+
+                        if (score > maxScore)
+                        {
+                            maxScore = score;
+                            enemyTileToAttackFrom = { finalPosition.x, finalPosition.y };
+                            unitEnemyWillAttack = attackableUnit;
+                            weaponEnemyAttacksWith = item;
+                        }
+                    }
+                }
             }
 
-            if (objective == MapObjective::Protect) //Head for the sieze tile
+            if (maxScore > 0) // We can attack someone.
             {
-                int dx = std::abs(seizeTile.x - enemy->tileX);
-                int dy = std::abs(seizeTile.y - enemy->tileY);
-                //if (dx < 12 && dy < 12 && dx != 0 && dy != 0)
-                if (dx != 0 && dy != 0)
+                // Equip the best weapon.
+                enemy->equipWeapon(weaponEnemyAttacksWith);
+
+                // Walk first, then battle.
+                if (!isAtFinalSpot)
                 {
-                    Djikstra::generateWalkingPath(enemy, seizeTile.x, seizeTile.y, &enemyWalkingPath);
-                    //start walking
+                    enemyWalkingTimer = (int)enemyWalkingPath.size()*8 - 9; //8 frames per tile
+
+                    mapState = EnemyPhaseWaitingForUnitToMove;
+                    enemyStateAfterCurrentState = EnemyPhaseWaitingForAttackToFinish;
+                }
+                else // Already at the final tile, so attack now.
+                {
+                    // Start the battle.
+                    Battle::doBattle(enemy, unitEnemyWillAttack);
+                    mapState = EnemyPhaseWaitingForAttackToFinish;
+                }
+            }
+            else
+            {
+                // No one to attack, start walking.
+                if (!isAtFinalSpot)
+                {
                     enemyWalkingTimer = (int)enemyWalkingPath.size()*8 - 9; //8 frames per tile
 
                     mapState = EnemyPhaseWaitingForUnitToMove;
                     enemyStateAfterCurrentState = EnemyPhaseCalculating;
                 }
-                else
+                else // No one to attack, and we're already at the final tile
                 {
                     enemyIdx--;
+                    enemy->isUsed = true;
                 }
             }
-            else
+        }
+        else if (enemy->behavior == Behavior::WaitUntilEnemyInRange)
+        {
+            std::vector<SDL_Point> walkableTiles;
+            Djikstra::calculateBlueTiles(enemy, &walkableTiles, &unitsEnemy, &unitsPlayer);
+
+            // Find someone in range that we can attack this turn.
+            for (int i = 0; i < (int)walkableTiles.size(); i++)
+            {
+                SDL_Point tile = walkableTiles[i];
+                for (int j = 0; j < (int)enemy->items.size(); j++)
+                {
+                    Item item = enemy->items.at(j);
+
+                    if (item.isWeapon() && enemy->canUseWeapon(item))
+                    {
+                        std::unordered_set<int> ranges = item.getWeaponRange();
+                        std::vector<SDL_Point> redTiles = calculatePreviewTilesAtTile(tile.x, tile.y, ranges);
+                        std::vector<Unit*> unitsICanAttack = getUnitsInTiles(&unitsPlayer, &redTiles);
+                    
+                        for (Unit* attackableUnit : unitsICanAttack)
+                        {
+                            int myAttack     = 0;
+                            int myHit        = 0;
+                            int myCrit       = 0;
+                            int playerAttack = 0;
+                            int playerHit    = 0;
+                            int playerCrit   = 0;
+                            Unit::calculateCombatStatsVsUnit(
+                                enemy, tile.x, tile.y, &item, 
+                                attackableUnit, attackableUnit->tileX, attackableUnit->tileY, attackableUnit->getEquippedWeapon(), 
+                                &myAttack, &myHit, &myCrit,
+                                &playerAttack, &playerHit, &playerCrit);
+
+                            long long score = myAttack*myHit*(myCrit + 50LL)*(150LL - playerAttack)*(200LL - playerHit)*(200LL - playerCrit);
+
+                            if (score > maxScore)
+                            {
+                                maxScore = score;
+                                enemyTileToAttackFrom = tile;
+                                unitEnemyWillAttack = attackableUnit;
+                                weaponEnemyAttacksWith = item;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (maxScore > 0) // we found someone we can attack, start walking towards them.
+            {
+                // Equip the best weapon.
+                enemy->equipWeapon(weaponEnemyAttacksWith);
+
+                // Already at the tile, no need to walk there.
+                if (enemyTileToAttackFrom.x == enemy->tileX && enemyTileToAttackFrom.y == enemy->tileY)
+                {
+                    Battle::doBattle(enemy, unitEnemyWillAttack);
+                    mapState = EnemyPhaseWaitingForAttackToFinish;
+                }
+                else
+                {
+                    Djikstra::generateWalkingPath(enemy, enemyTileToAttackFrom.x, enemyTileToAttackFrom.y, &enemyWalkingPath);
+
+                    // Start walking
+                    enemyWalkingTimer = (int)enemyWalkingPath.size()*8 - 9; //8 frames per tile
+
+                    mapState = EnemyPhaseWaitingForUnitToMove;
+                    enemyStateAfterCurrentState = EnemyPhaseWaitingForAttackToFinish;
+                }
+
+                // Change our behavior to roam
+                enemy->behavior = Behavior::Roam;
+            }
+            else // No one in our range
             {
                 enemyIdx--;
+                enemy->isUsed = true;
             }
+        }
+        else
+        {
+            printf("error: unknown enemy behavior %d\n", enemy->behavior);
+            enemyIdx--;
+            enemy->isUsed = true;
         }
 
         break;
@@ -1492,8 +1897,26 @@ void Map::enemyPhase()
         int id1 = (enemyWalkingTimer)/8;
         int id2 = id1 + 1;
 
-        SDL_Point p1 = enemyWalkingPath[id1];
-        SDL_Point p2 = enemyWalkingPath[id2];
+        SDL_Point p1 = enemyWalkingPath[0];
+        SDL_Point p2 = enemyWalkingPath[0];
+
+        if (id1 > enemyWalkingPath.size() - 1)
+        {
+            printf("id1 is out of range (%d / %d)\n", id1, (int)enemyWalkingPath.size());
+        }
+        else
+        {
+            p1 = enemyWalkingPath[id1];
+        }
+
+        if (id2 > enemyWalkingPath.size() - 1)
+        {
+            printf("id2 is out of range (%d / %d)\n", id2, (int)enemyWalkingPath.size());
+        }
+        else
+        {
+            p2 = enemyWalkingPath[id2];
+        }
 
         float perc = (enemyWalkingTimer % 8)/8.0f;
 
@@ -1518,6 +1941,10 @@ void Map::enemyPhase()
             direction = 5;
         }
 
+        cursorX = enemyWalkingPath[0].x;
+        cursorY = enemyWalkingPath[0].y;
+        updateCamera();
+
         renderUnits(&unitsPlayer, 0, nullptr);
 
         movingUnit->x = (int)(tweenX*16);
@@ -1530,12 +1957,14 @@ void Map::enemyPhase()
         enemyWalkingTimer--;
         if (enemyWalkingTimer <= 0)
         {
-            enemyAttackingTimer = 0;
+            enemyAttackingTimer = -30;
 
             if (enemyStateAfterCurrentState == EnemyPhaseWaitingForAttackToFinish)
             {
                 movingUnit->tileX = enemyTileToAttackFrom.x;
                 movingUnit->tileY = enemyTileToAttackFrom.y;
+                movingUnit->x = enemyTileToAttackFrom.x*16;
+                movingUnit->y = enemyTileToAttackFrom.y*16;
 
                 Battle::doBattle(movingUnit, unitEnemyWillAttack);
 
@@ -1546,15 +1975,14 @@ void Map::enemyPhase()
             {
                 movingUnit->tileX = p1.x;
                 movingUnit->tileY = p1.y;
+                movingUnit->x = p1.x*16;
+                movingUnit->y = p1.y*16;
 
                 mapState = EnemyPhaseCalculating;
                 enemyIdx--;
+                movingUnit->isUsed = true;
             }
         }
-
-        cursorX = p1.x;
-        cursorY = p1.y;
-        updateCamera();
 
         break;
     }
@@ -1603,132 +2031,205 @@ void Map::enemyPhase()
             toMove = {0, -1};
         }
 
-        int turnIdx = enemyAttackingTimer/60; //1 second per attack
-        int turnTimer = enemyAttackingTimer % 60;
-
-        TurnResult turn = Battle::results[turnIdx + 1];
-
-        int turnScale = 1;
-        int attackingIndex = enemyDir;
-        int defendingIndex = 0;
-        if (turn.unitDefending == attackingUnit)
+        if (enemyAttackingTimer < 0) // Have some padding time before attack starts
         {
-            attackingIndex = playerDir;
-            defendingIndex = 6;
-            turnScale = -1;
-        }
+            TurnResult turn = Battle::results[0];
 
-        if (turnTimer >= 22 && turnTimer < 38)
-        {
-            if (turnTimer < 30)
+            int turnScale = 1;
+            int attackingIndex = enemyDir;
+            int defendingIndex = 0;
+            if (turn.unitDefending == attackingUnit)
             {
-                turn.unitAttacking->x += toMove.x*turnScale;
-                turn.unitAttacking->y += toMove.y*turnScale;
-            }
-            else
-            {
-                turn.unitAttacking->x -= toMove.x*turnScale;
-                turn.unitAttacking->y -= toMove.y*turnScale;
-            }
-        }
-
-        SDL_Color colorDefending{255, 255, 255, 255};
-        if (turn.hit && turnTimer >= 30 && turnTimer < 45)
-        {
-            colorDefending.r = (Uint8)((turnTimer - 30)*16);
-            colorDefending.g = (Uint8)((turnTimer - 30)*16);
-            colorDefending.b = (Uint8)((turnTimer - 30)*16);
-        }
-
-        if (turnTimer == 30)
-        {
-            if (!turn.hit)
-            {
-                Audio::play(AttackMiss, -1);
-            }
-            else if (turn.crit)
-            {
-                Audio::play(AttackCritKill, -1);
-            }
-            else if (turn.unitLeftHp == 0 || turn.unitRightHp == 0)
-            {
-                Audio::play(AttackKill, -1);
-            }
-            else
-            {
-                Audio::play(AttackHit, -1);
-            }
-        }
-
-        if (turnTimer == 59 && (turn.unitLeftHp <= 0 || turn.unitRightHp <= 0))
-        {
-            Audio::play(AttackDieFade, -1);
-        }
-
-        turn.unitDefending->render(turn.unitDefending->x, turn.unitDefending->y, defendingIndex, viewportPixelX, viewportPixelY, colorDefending);
-        turn.unitAttacking->render(turn.unitAttacking->x, turn.unitAttacking->y, attackingIndex, viewportPixelX, viewportPixelY);
-
-        if (!turn.hit && turnTimer >= 16 && turnTimer < 44)
-        {
-            attackingMiss->render(turn.unitDefending->x + 8 + viewportPixelX, turn.unitDefending->y + 8 + viewportPixelY, turnTimer - 16);
-        }
-
-        attackingHealthDisplay->y = 16;
-        if (defendingPlayer->tileY - viewportY < 5)
-        {
-            attackingHealthDisplay->y = 112;
-        }
-        attackingHealthDisplay->render( 40, attackingHealthDisplay->y, 1);
-        attackingHealthDisplay->render(120, attackingHealthDisplay->y, 0);
-
-        int dispIdx = (int)floor((enemyAttackingTimer - 30)/60.0f) + 1;
-        TurnResult displayTurn = Battle::results[dispIdx];
-        Text::renderText(std::to_string(displayTurn.unitRightHp),    Font::Border, Text::White,  46, attackingHealthDisplay->y + 14, Right,  16);
-        Text::renderText(std::to_string(displayTurn.unitLeftHp),     Font::Border, Text::White, 126, attackingHealthDisplay->y + 14, Right,  16);
-        Text::renderText(attackingUnit->unitResources.displayName,   Font::Border, Text::White,  49, attackingHealthDisplay->y +  1, Center, 60);
-        Text::renderText(defendingPlayer->unitResources.displayName, Font::Border, Text::White, 129, attackingHealthDisplay->y +  1, Center, 60);
-
-        float hpPerc = ((float)displayTurn.unitRightHp)/attackingUnit->maxHp;
-        SDL_Rect hpBar;
-        hpBar.x = 108;
-        hpBar.y = attackingHealthDisplay->y + 21;
-        hpBar.w = (int)(-41*(1 - hpPerc));
-        hpBar.h = 2;
-        SDL_SetRenderDrawColor(Global::sdlRenderer, 115, 49, 0, 255);
-        SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
-
-        hpPerc = ((float)displayTurn.unitLeftHp)/defendingPlayer->maxHp;
-        hpBar.x = 188;
-        hpBar.w = (int)(-41*(1 - hpPerc));
-        SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
-        SDL_SetRenderDrawColor(Global::sdlRenderer, 255, 255, 255, 255);
-
-
-        enemyAttackingTimer++;
-        if (enemyAttackingTimer >= (Battle::results.size() - 1)*60)
-        {
-            enemyAttackingTimer = 0;
-
-            attackingUnit->isUsed = true;
-
-            if (attackingUnit->hp <= 0)
-            {
-                unitsEnemy.erase(unitsEnemy.begin() + Util::getIndex(&unitsEnemy, attackingUnit));
-                delete attackingUnit;
-                attackingUnit = nullptr;
+                attackingIndex = playerDir;
+                defendingIndex = 6;
+                turnScale = -1;
             }
 
-            if (defendingPlayer->hp <= 0)
+            turn.unitDefending->render(turn.unitDefending->x, turn.unitDefending->y, defendingIndex, viewportPixelX, viewportPixelY);
+            turn.unitAttacking->render(turn.unitAttacking->x, turn.unitAttacking->y, attackingIndex, viewportPixelX, viewportPixelY);
+
+            attackingHealthDisplay->y = 16;
+            if (defendingPlayer->tileY - viewportY < 5)
             {
-                unitsPlayer.erase(unitsPlayer.begin() + Util::getIndex(&unitsPlayer, defendingPlayer));
-                delete defendingPlayer;
-                defendingPlayer = nullptr;
+                attackingHealthDisplay->y = 112;
+            }
+            attackingHealthDisplay->render( 40, attackingHealthDisplay->y, 1);
+            attackingHealthDisplay->render(120, attackingHealthDisplay->y, 0);
+
+            attackingStatDisplay->y = attackingHealthDisplay->y;
+            attackingStatDisplay->render(  0, attackingStatDisplay->y, 1);
+            attackingStatDisplay->render(200, attackingStatDisplay->y, 2);
+
+            Text::renderText(std::to_string(turn.unitLeftAtk),  Font::Border, Text::Blue,  12, attackingStatDisplay->y +  1, Right, 24);
+            Text::renderText(std::to_string(turn.unitLeftHit),  Font::Border, Text::Blue,  12, attackingStatDisplay->y + 17, Right, 24);
+            Text::renderText(std::to_string(turn.unitLeftCrt),  Font::Border, Text::Blue,  12, attackingStatDisplay->y + 33, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightAtk), Font::Border, Text::Blue, 198, attackingStatDisplay->y +  1, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightHit), Font::Border, Text::Blue, 198, attackingStatDisplay->y + 17, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightCrt), Font::Border, Text::Blue, 198, attackingStatDisplay->y + 33, Right, 24);
+
+            TurnResult displayTurn = Battle::results[0];
+            Text::renderText(std::to_string(displayTurn.unitRightHp),    Font::Border, Text::White,  46, attackingHealthDisplay->y + 14, Right,  16);
+            Text::renderText(std::to_string(displayTurn.unitLeftHp),     Font::Border, Text::White, 126, attackingHealthDisplay->y + 14, Right,  16);
+            Text::renderText(attackingUnit->unitResources.displayName,   Font::Border, Text::White,  49, attackingHealthDisplay->y +  1, Center, 60);
+            Text::renderText(defendingPlayer->unitResources.displayName, Font::Border, Text::White, 129, attackingHealthDisplay->y +  1, Center, 60);
+
+            float hpPerc = ((float)displayTurn.unitRightHp)/attackingUnit->maxHp;
+            SDL_Rect hpBar;
+            hpBar.x = 108;
+            hpBar.y = attackingHealthDisplay->y + 21;
+            hpBar.w = (int)(-41*(1 - hpPerc));
+            hpBar.h = 2;
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 115, 49, 0, 255);
+            SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
+
+            hpPerc = ((float)displayTurn.unitLeftHp)/defendingPlayer->maxHp;
+            hpBar.x = 188;
+            hpBar.w = (int)(-41*(1 - hpPerc));
+            SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 255, 255, 255, 255);
+
+            enemyAttackingTimer++;
+        }
+        else
+        {
+            int turnIdx = enemyAttackingTimer/60; //1 second per attack
+            int turnTimer = (enemyAttackingTimer + 60) % 60;
+
+            TurnResult turn = Battle::results[turnIdx + 1];
+
+            int turnScale = 1;
+            int attackingIndex = enemyDir;
+            int defendingIndex = 0;
+            if (turn.unitDefending == attackingUnit)
+            {
+                attackingIndex = playerDir;
+                defendingIndex = 6;
+                turnScale = -1;
             }
 
-            resetNeutralHudDescriptions();
-            mapState = EnemyPhaseCalculating;
-            enemyIdx--;
+            if (turnTimer >= 22 && turnTimer < 38)
+            {
+                if (turnTimer < 30)
+                {
+                    turn.unitAttacking->x += toMove.x*turnScale;
+                    turn.unitAttacking->y += toMove.y*turnScale;
+                }
+                else
+                {
+                    turn.unitAttacking->x -= toMove.x*turnScale;
+                    turn.unitAttacking->y -= toMove.y*turnScale;
+                }
+            }
+
+            SDL_Color colorDefending{255, 255, 255, 255};
+            if (turn.hit && turnTimer >= 30 && turnTimer < 45)
+            {
+                colorDefending.r = (Uint8)((turnTimer - 30)*16);
+                colorDefending.g = (Uint8)((turnTimer - 30)*16);
+                colorDefending.b = (Uint8)((turnTimer - 30)*16);
+            }
+
+            if (turnTimer == 30)
+            {
+                if (!turn.hit)
+                {
+                    Audio::play(AttackMiss, -1);
+                }
+                else if (turn.crit)
+                {
+                    Audio::play(AttackCritKill, -1);
+                }
+                else if (turn.unitLeftHp == 0 || turn.unitRightHp == 0)
+                {
+                    Audio::play(AttackKill, -1);
+                }
+                else
+                {
+                    Audio::play(AttackHit, -1);
+                }
+            }
+
+            if (turnTimer == 59 && (turn.unitLeftHp <= 0 || turn.unitRightHp <= 0))
+            {
+                Audio::play(AttackDieFade, -1);
+            }
+
+            turn.unitDefending->render(turn.unitDefending->x, turn.unitDefending->y, defendingIndex, viewportPixelX, viewportPixelY, colorDefending);
+            turn.unitAttacking->render(turn.unitAttacking->x, turn.unitAttacking->y, attackingIndex, viewportPixelX, viewportPixelY);
+
+            if (!turn.hit && turnTimer >= 16 && turnTimer < 44)
+            {
+                attackingMiss->render(turn.unitDefending->x + 8 + viewportPixelX, turn.unitDefending->y + 8 + viewportPixelY, turnTimer - 16);
+            }
+
+            attackingHealthDisplay->y = 16;
+            if (defendingPlayer->tileY - viewportY < 5)
+            {
+                attackingHealthDisplay->y = 112;
+            }
+            attackingHealthDisplay->render( 40, attackingHealthDisplay->y, 1);
+            attackingHealthDisplay->render(120, attackingHealthDisplay->y, 0);
+
+            attackingStatDisplay->y = attackingHealthDisplay->y;
+            attackingStatDisplay->render(  0, attackingStatDisplay->y, 1);
+            attackingStatDisplay->render(200, attackingStatDisplay->y, 2);
+
+            Text::renderText(std::to_string(turn.unitLeftAtk),  Font::Border, Text::Blue,  12, attackingStatDisplay->y +  1, Right, 24);
+            Text::renderText(std::to_string(turn.unitLeftHit),  Font::Border, Text::Blue,  12, attackingStatDisplay->y + 17, Right, 24);
+            Text::renderText(std::to_string(turn.unitLeftCrt),  Font::Border, Text::Blue,  12, attackingStatDisplay->y + 33, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightAtk), Font::Border, Text::Blue, 198, attackingStatDisplay->y +  1, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightHit), Font::Border, Text::Blue, 198, attackingStatDisplay->y + 17, Right, 24);
+            Text::renderText(std::to_string(turn.unitRightCrt), Font::Border, Text::Blue, 198, attackingStatDisplay->y + 33, Right, 24);
+
+            int dispIdx = (int)floor((enemyAttackingTimer - 30)/60.0f) + 1;
+            TurnResult displayTurn = Battle::results[dispIdx];
+            Text::renderText(std::to_string(displayTurn.unitRightHp),    Font::Border, Text::White,  46, attackingHealthDisplay->y + 14, Right,  16);
+            Text::renderText(std::to_string(displayTurn.unitLeftHp),     Font::Border, Text::White, 126, attackingHealthDisplay->y + 14, Right,  16);
+            Text::renderText(attackingUnit->unitResources.displayName,   Font::Border, Text::White,  49, attackingHealthDisplay->y +  1, Center, 60);
+            Text::renderText(defendingPlayer->unitResources.displayName, Font::Border, Text::White, 129, attackingHealthDisplay->y +  1, Center, 60);
+
+            float hpPerc = ((float)displayTurn.unitRightHp)/attackingUnit->maxHp;
+            SDL_Rect hpBar;
+            hpBar.x = 108;
+            hpBar.y = attackingHealthDisplay->y + 21;
+            hpBar.w = (int)(-41*(1 - hpPerc));
+            hpBar.h = 2;
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 115, 49, 0, 255);
+            SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
+
+            hpPerc = ((float)displayTurn.unitLeftHp)/defendingPlayer->maxHp;
+            hpBar.x = 188;
+            hpBar.w = (int)(-41*(1 - hpPerc));
+            SDL_RenderFillRect(Global::sdlRenderer, &hpBar);
+            SDL_SetRenderDrawColor(Global::sdlRenderer, 255, 255, 255, 255);
+
+            enemyAttackingTimer++;
+            if (enemyAttackingTimer >= (Battle::results.size() - 1)*60)
+            {
+                enemyAttackingTimer = 0;
+
+                attackingUnit->isUsed = true;
+
+                if (attackingUnit->hp <= 0)
+                {
+                    unitsEnemy.erase(unitsEnemy.begin() + Util::getIndex(&unitsEnemy, attackingUnit));
+                    delete attackingUnit;
+                    attackingUnit = nullptr;
+                }
+
+                if (defendingPlayer->hp <= 0)
+                {
+                    unitsPlayer.erase(unitsPlayer.begin() + Util::getIndex(&unitsPlayer, defendingPlayer));
+                    delete defendingPlayer;
+                    defendingPlayer = nullptr;
+                }
+
+                resetNeutralHudDescriptions();
+                mapState = EnemyPhaseCalculating;
+                enemyIdx--;
+            }
         }
+
         break;
     }
 
@@ -1916,6 +2417,11 @@ void Map::renderPreviewTilesEnemyAll()
 
 Unit* Map::getUnitAtTile(int tileX, int tileY, std::vector<Unit*>* units)
 {
+    if (units == nullptr)
+    {
+        return nullptr;
+    }
+
     for (int i = 0; i < units->size(); i++)
     {
         if (units->at(i)->tileX == tileX && units->at(i)->tileY == tileY)
@@ -2633,6 +3139,7 @@ void Map::renderUnits(std::vector<Unit*>* units, int spriteIndex, Unit* ignoreMe
         if (unit != ignoreMe)
         {
             unit->render(unit->tileX*16, unit->tileY*16, spriteIndex, viewportPixelX, viewportPixelY);
+            unit->renderHealthbar(unit->tileX*16, unit->tileY*16, spriteIndex, viewportPixelX, viewportPixelY);
         }
     }
 }
@@ -2680,7 +3187,7 @@ std::vector<SDL_Point> Map::calculatePreviewTilesAtTile(int tileX, int tileY, st
     return tileLocations;
 }
 
-void Map::createAttackPreviewTiles(Unit* unit, std::unordered_set<int> ranges)
+void Map::createAttackPreviewTiles(Unit* unit, std::unordered_set<int> ranges, std::vector<Sprite*>* previewTiles)
 {
     std::vector<SDL_Point> reds = calculatePreviewTilesAtTile(unit->tileX, unit->tileY, ranges);
 
@@ -2690,7 +3197,7 @@ void Map::createAttackPreviewTiles(Unit* unit, std::unordered_set<int> ranges)
 
         int x = newRedTile.x;
         int y = newRedTile.y;
-        Map::previewTilesRed.push_back(new Sprite("res/Images/Sprites/Map/PreviewTileRed", x, y, false));
+        previewTiles->push_back(new Sprite("res/Images/Sprites/Map/PreviewTileRed", x, y, false));
     }
 }
 
@@ -2766,8 +3273,7 @@ void Map::renderAttackPreview()
             int otherAttack = 0;
             int otherHit    = 0;
             int otherCrit   = 0;
-            selectedUnit ->calculateCombatStatsVsUnit(enemyOnCursor, &myAttack,    &myHit,    &myCrit);
-            enemyOnCursor->calculateCombatStatsVsUnit(selectedUnit,  &otherAttack, &otherHit, &otherCrit);
+            selectedUnit->calculateCombatStatsVsUnit(enemyOnCursor, &myAttack, &myHit, &myCrit, &otherAttack, &otherHit, &otherCrit);
 
             Text::renderText(std::to_string(selectedUnit->hp),  Font::Border, Text::Blue, baseX + 48, baseY + 25, Right, 24);
             Text::renderText(std::to_string(enemyOnCursor->hp), Font::Border, Text::Blue, baseX +  2, baseY + 25, Right, 24);

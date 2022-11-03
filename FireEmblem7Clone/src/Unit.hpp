@@ -31,6 +31,14 @@ public:
     UnitResources(std::string filePath);
 };
 
+enum Behavior
+{
+    Roam = 0,
+    WaitUntilEnemyInRange = 1,
+    NoMove = 2,
+    HeadForSieze = 3,
+};
+
 class Unit
 {
 private:
@@ -48,6 +56,8 @@ private:
     Sprite* sprMapRunDownR  = nullptr;
     Sprite* sprMapRunLeftR  = nullptr;
 
+    Sprite* sprBossIcon = nullptr;
+
 public:
     UnitResources unitResources;
     ClassResources classResources;
@@ -56,7 +66,7 @@ public:
     Sprite* sprMugshot      = nullptr;
     Sprite* sprMugshotTiny  = nullptr;
 
-    //pixel coordinates
+    //pixel coordinates. normally the same as tileX*16, tileY*16, except in the case of animations playing (like walking, attacking)
     int x = 0;
     int y = 0;
 
@@ -64,6 +74,11 @@ public:
     int tileX = 0; //position on the map
     int tileY = 0;
     bool isUsed = false;
+
+    //Enemy related stuff
+    bool isBoss = false;
+    Behavior behavior = NoMove;
+    int groupId = 0;
 
     //Character specific data
     int lvl = 1;
@@ -99,6 +114,7 @@ public:
 
     void render(int x, int y, int spriteIndex, int viewportPixelOffsetX, int viewportPixelOffsetY);
     void render(int x, int y, int spriteIndex, int viewportPixelOffsetX, int viewportPixelOffsetY, SDL_Color color);
+    void renderHealthbar(int x, int y, int spriteIndex, int viewportPixelOffsetX, int viewportPixelOffsetY);
 
     std::unordered_set<int> getAttackRanges();
 
@@ -106,13 +122,40 @@ public:
 
     Item* getEquippedWeapon();
 
+    // Equips the weapon by moving it to the first slot in the inventory.
+    // The given weapon should exist in the intentory already.
+    void equipWeapon(Item weapon);
+
+    // Moves the weapon at the given index to the beginning of the item list.
+    void equipWeapon(int index);
+
     int getAttackSpeedWithWeapon(WeaponStats weaponStats);
 
     bool canUseWeapon(Item weapon);
 
     bool canUseStaff(Item staff);
 
-    void calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* crit);
+    //void calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* crit);
+
+    // Calculates the damage, hit, and crit for 2 units in combat.
+    static void calculateCombatStatsVsUnit(
+        Unit* me,    int myTileX,    int myTileY,    Item* myWeapon,
+        Unit* other, int otherTileX, int otherTileY, Item* otherWeapon,
+        int* myDamage,    int* myHit,    int* myCrit,
+        int* otherDamage, int* otherHit, int* otherCrit);
+
+    // Calculates the damage, hit, and crit when battling the other unit.
+    void calculateCombatStatsVsUnit(Unit* other, int* damage, int* hit, int* crit, int* otherDamage, int* otherHit, int* otherCrit);
+
+private:
+    static void calculateCombatStatsVsUnit(
+        Unit* me,    int myTileX,    int myTileY,    Item* myWeapon,
+        Unit* other, int otherTileX, int otherTileY, Item* otherWeapon,
+        int* damage, int* hit, int* crit);
+
+public:
+    // Calculates the damage, hit, and crit for 2 units in combat.
+    //void calculateCombatStatsVsUnit(int myTileX, int myTileY, Item* myWeapon, Unit* other, int* damage, int* hit, int* crit);
 
     void calculateBaseCombatStats(int* attack, int* hit, int* avoid, int* crit, int* attackSpeed);
 };
