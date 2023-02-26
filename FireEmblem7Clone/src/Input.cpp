@@ -168,3 +168,24 @@ bool Input::pressedRight()
     }
     return !inputsPrev[8];
 }
+
+
+bool Input::pressingA()
+{
+    return inputs[0];
+}
+
+bool Input::pressingB()
+{
+    return inputs[1];
+}
+
+bool Input::pressingX()
+{
+    return inputs[2];
+}
+
+bool Input::pressingY()
+{
+    return inputs[3];
+}

@@ -115,6 +115,20 @@ public:
 
     ClassResources();
     ClassResources(std::string internalName, ClassType type);
+
+    // Stuff related to exp gain calculations.
+
+    // Unpromoted = 0. Promoted = 1.
+    int tier();
+
+    // For most units, 3.
+    int power();
+
+    // Unpromoted = 0. Promoted = 60. Assassins, BishopF, Valkyries = 40.
+    int bonusB();
+
+    // Assassin, ThiefF, ThiefM = 20. Otherwise 0.
+    int bonusThief();
 };
 
 class ClassData

@@ -84,6 +84,9 @@ void Battle::doBattle(Unit* initialAttackingUnit, Unit* initialDefendingUnit)
 
     results.push_back(initialTurn);
 
+    bool leftDidDamage = false;
+    bool rightDidDamage = false;
+
     for (int i = 0; i < turns.size(); i++)
     {
         //Check if the attacking unit's weapon still has uses left
@@ -161,6 +164,11 @@ void Battle::doBattle(Unit* initialAttackingUnit, Unit* initialDefendingUnit)
                     turn.hit = true;
                 }
                 leftWeapon->usesRemaining--;
+
+                if (leftAttack > 0)
+                {
+                    leftDidDamage = true;
+                }
             }
         }
         else
@@ -184,6 +192,11 @@ void Battle::doBattle(Unit* initialAttackingUnit, Unit* initialDefendingUnit)
                     turn.hit = true;
                 }
                 rightWeapon->usesRemaining--;
+
+                if (rightAttack > 0)
+                {
+                    rightDidDamage = true;
+                }
             }
         }
 
@@ -198,7 +211,89 @@ void Battle::doBattle(Unit* initialAttackingUnit, Unit* initialDefendingUnit)
         if (initialAttackingUnit->hp <= 0 ||
             initialDefendingUnit->hp <= 0)
         {
-            return;
+            // End battle if either HP is 0.
+            i = (int)turns.size();
+        }
+    }
+
+    Unit* unitL = initialAttackingUnit;
+    Unit* unitR = initialDefendingUnit;
+
+    // Determine EXP gained.
+    // https://serenesforest.net/blazing-sword/miscellaneous/calculations/
+
+    int powerL = unitL->classResources.power();
+    int powerR = unitR->classResources.power();
+    int bonusAL = unitL->classResources.tier()*20;
+    int bonusAR = unitR->classResources.tier()*20;
+    int bonusBL = unitL->classResources.bonusB();
+    int bonusBR = unitR->classResources.bonusB();
+    int bonusBossL = unitL->isBoss*40;
+    int bonusBossR = unitR->isBoss*40;
+    int bonusThiefL = unitL->classResources.bonusThief();
+    int bonusThiefR = unitR->classResources.bonusThief();
+
+    if (unitL->canGainExp && unitL->hp > 0)
+    {
+        if (leftDidDamage)
+        {
+            int expFromDoingDamage = ((31 + unitR->lvl + bonusAR) - (unitL->lvl + bonusAL))/powerL;
+
+            if (unitR->hp > 0)
+            {
+                unitL->exp += expFromDoingDamage;
+            }
+            else
+            {
+                int expFromDefeatingBase = ((unitR->lvl * powerR) + bonusBR) - ((unitL->lvl * powerL) + bonusBL);
+            
+                int totalExp = expFromDefeatingBase + 20 + bonusBossR + bonusThiefR;
+                if (totalExp < 0)
+                {
+                    totalExp = 0;
+                }
+
+                totalExp += expFromDoingDamage;
+
+                //todo assassinate coefficient.
+                unitL->exp += totalExp;
+            }
+        }
+        else
+        {
+            unitL->exp += 1;
+        }
+    }
+
+    if (unitR->canGainExp && unitR->hp > 0)
+    {
+        if (rightDidDamage)
+        {
+            int expFromDoingDamage = ((31 + unitL->lvl + bonusAL) - (unitR->lvl + bonusAR))/powerR;
+
+            if (unitL->hp > 0)
+            {
+                unitR->exp += expFromDoingDamage;
+            }
+            else
+            {
+                int expFromDefeatingBase = ((unitL->lvl * powerL) + bonusBL) - ((unitR->lvl * powerR) + bonusBR);
+            
+                int totalExp = expFromDefeatingBase + 20 + bonusBossL + bonusThiefL;
+                if (totalExp < 0)
+                {
+                    totalExp = 0;
+                }
+
+                totalExp += expFromDoingDamage;
+
+                //todo assassinate coefficient.
+                unitR->exp += totalExp;
+            }
+        }
+        else
+        {
+            unitR->exp += 1;
         }
     }
 }

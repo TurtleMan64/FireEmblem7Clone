@@ -35,8 +35,9 @@ enum Behavior
 {
     Roam = 0,
     WaitUntilEnemyInRange = 1,
-    NoMove = 2,
-    HeadForSieze = 3,
+    AttackEnemyInRange = 2,
+    NoMove = 3,
+    HeadForSieze = 4,
 };
 
 class Unit
@@ -76,8 +77,9 @@ public:
     bool isUsed = false;
 
     //Enemy related stuff
-    bool isBoss = false;
+    int isBoss = 0;
     Behavior behavior = NoMove;
+    int roamTurn = 0; //if the behavior is WaitUntilEnemyInRange, behavior changes to roam on this turn.
     int groupId = 0;
 
     //Character specific data
@@ -102,6 +104,8 @@ public:
     int battleTotal  = 0;
     int battleWins   = 0;
     int battleLosses = 0;
+
+    bool canGainExp = true;
 
     int weaponRank[9] = {N,N,N,N,N,N,N,N,N};
 

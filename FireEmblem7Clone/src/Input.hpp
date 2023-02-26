@@ -25,4 +25,9 @@ public:
     static bool pressedDown();
     static bool pressedLeft();
     static bool pressedRight();
+
+    static bool pressingA();
+    static bool pressingB();
+    static bool pressingX();
+    static bool pressingY();
 };

@@ -133,6 +133,133 @@ void ClassData::init()
 //    return "Prince";
 //}
 
+int ClassResources::tier()
+{
+    switch (classType)
+    {
+        case LordCaelin:
+        case LordPherae:
+        case LordOstia:
+        case Mercenary:
+        case MyrmidonF:
+        case MyrmidonM:
+        case ThiefF:
+        case ThiefM:
+        case Knight:
+        case Soldier:
+        case Fighter:
+        case Brigand:
+        case Pirate:
+        case Corsair:
+        case ArcherF:
+        case ArcherM:
+        case NomadF:
+        case NomadM:
+        case Cavalier:
+        case PegasusKnight:
+        case WyvernRider:
+        case Monk:
+        case Cleric:
+        case Troubadour:
+        case MageF:
+        case MageM:
+        case ShamanF:
+        case ShamanM:
+        case Man:
+        case Prince:
+        case TransporterTent:
+            return 0;
+        
+        case BladeLord:
+        case KnightLord:
+        case GreatLord:
+        case HeroF:
+        case HeroM:
+        case SwordmasterF:
+        case SwordmasterM:
+        case Assassin:
+        case General:
+        case Warrior:
+        case Berserker:
+        case SniperF:
+        case SniperM:
+        case NomadTrooperF:
+        case NomadTrooperM:
+        case Paladin:
+        case FalconKnight:
+        case WyvernLord:
+        case BishopF:
+        case BishopM:
+        case Valkyrie:
+        case SageF:
+        case SageM:
+        case Archsage:
+        case DruidF:
+        case DruidM:
+        case DarkDruid:
+        case Bard:
+        case Dancer:
+        case MagicSeal:
+        case Bramimond:
+        case FireDragon:
+        case TransporterWagon:
+            return 1;
+
+        default:
+            return 0;
+    }
+}
+
+int ClassResources::power()
+{
+    switch (classType)
+    {
+        case Prince:
+        case TransporterTent:
+        case TransporterWagon:
+            return 1;
+
+        case Cleric:
+        case Soldier:
+        case Troubadour: 
+        case Bard:  
+        case ThiefF:   
+        case ThiefM:    
+        case Dancer:
+            return 2;
+
+        case FireDragon:
+            return 5;
+
+        default:
+            return 3;
+    }
+}
+
+int ClassResources::bonusB()
+{
+    if (classType == Assassin ||
+        classType == BishopF  ||
+        classType == Valkyrie)
+    {
+        return 40;
+    }
+
+    return tier()*60;
+}
+
+int ClassResources::bonusThief()
+{
+    if (classType == Assassin ||
+        classType == ThiefF   ||
+        classType == ThiefM)
+    {
+        return 20;
+    }
+
+    return 0;
+}
+
 ClassResources ClassData::getClassResources(std::string name)
 {
     auto a = nameToClassResources.find(name);

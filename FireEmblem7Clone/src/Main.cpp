@@ -1,13 +1,16 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_mixer.h>
+#include <SDL/SDL_ttf.h>
 
 #include <string>
+#include <chrono>
 
 #include "Global.hpp"
 #include "Input.hpp"
 #include "ImageAnimation.hpp"
 #include "Map.hpp"
+#include "MapTile.hpp"
 #include "MainMenu.hpp"
 #include "ClassData.hpp"
 #include "UnitDisplay.hpp"
@@ -16,10 +19,10 @@
 #include "Items.hpp"
 #include "WindowBox.hpp"
 #include "Audio.hpp"
+#include "Usleep.hpp"
 
 SDL_Renderer* Global::sdlRenderer = nullptr;
 
-float Global::fpsSleepBias = 16.0f;
 int Global::frameCount = 0;
 
 Global::GameState Global::gameState = Title;
@@ -31,23 +34,49 @@ int Global::transitionTimer = 0;
 Global::GameState Global::transitionState = Title;
 int Global::fadeInTimer = 30;
 
-#undef main
-int main()
+std::chrono::time_point<std::chrono::steady_clock> Global::previousFrameTimestamp;
+
+//#undef main
+int main(int argc, char* argv[])
 {
+    argc;
+    argv;
+
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Init(SDL_INIT_AUDIO);
     SDL_Init(SDL_INIT_GAMECONTROLLER);
     IMG_Init(IMG_INIT_PNG);
+    TTF_Init();
 
-    SDL_Window* window = SDL_CreateWindow("FE7", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 240, 160, SDL_WINDOW_RESIZABLE);
+    bool vsync = true;
 
-    Global::sdlRenderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
+    int vsyncFlag = SDL_RENDERER_PRESENTVSYNC;
+    if (!vsync)
+    {
+        vsyncFlag = 0;
+    }
+
+    SDL_Window* window = SDL_CreateWindow("Fire Emblem: The Blazing Blade", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 240, 160, SDL_WINDOW_RESIZABLE);
+
+    Global::sdlRenderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | vsyncFlag);
 
     SDL_Texture* mainRenderTexture = SDL_CreateTexture(Global::sdlRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 240, 160);
 
     //Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
     //Mix_Chunk* jumpEffect = Mix_LoadWAV("res/Audio/SFX/LevelUp.wav");
     //Mix_PlayChannel(-1, jumpEffect, 0);
+
+    TTF_Font* fontConsolas = TTF_OpenFont("res/Text/CONSOLA.TTF", 48);
+
+    //https://stackoverflow.com/questions/3229391/sdl-sdl-ttf-transparent-blended-text
+    SDL_Color textColorFg = {255, 255, 255, 0};
+    SDL_Color textColorBg = {0, 0, 0, 0};
+    SDL_Rect textRect{0,0,0,0};
+    SDL_Surface* surface = TTF_RenderText_LCD(fontConsolas, "test font render", textColorFg, textColorBg);
+    SDL_Texture* renderedFontTexture = SDL_CreateTextureFromSurface(Global::sdlRenderer, surface);
+    textRect.w = surface->w;
+    textRect.h = surface->h;
+    SDL_FreeSurface(surface);
 
     Audio::init();
     MainMenu::init();
@@ -59,6 +88,8 @@ int main()
     Text::init();
     UnitDisplay::init();
     WindowBox::init();
+    MapTile::init();
+    Usleep_init();
 
     //SDL_SetHintWithPriority(SDL_HINT_RENDER_VSYNC, "0", SDL_HINT_OVERRIDE);
     //SDL_GL_SetSwapInterval(0);
@@ -77,15 +108,10 @@ int main()
     SDL_Texture* texTitleScreen = IMG_LoadTexture(Global::sdlRenderer, "res/Images/BG/TitleScreen.png");
     //SDL_Texture* texMainMenu    = IMG_LoadTexture(Global::sdlRenderer, "res/Images/BG/MainMenu.png");
 
-    float prevTimeMs = (float)SDL_GetTicks();
-    float prevSecond = prevTimeMs/1000.0f;
-    int framesThisSecond = 0;
-
     int animIndex = 0;
     bool running = true;
     while (running)
     {
-        framesThisSecond++;
         Global::frameCount++;
 
         if (Global::fadeInTimer > 0)
@@ -104,38 +130,7 @@ int main()
             }
         }
 
-        float currentTimeMs = (float)SDL_GetTicks();
-        //if its been < 10ms since last frame, that means vsync isnt on and the game is probably running really fast.
-        // this would also happen with a 120hz or 144hz etc monitor. it also seems to happen when you minimize the 
-        // game window. in either case we dont want the game wasting useless cpu + gpu so we can sleep for approx the
-        // remaining time. fps wont be a consistent 60 but the game is probably minimized so we dont really care.
-        if (currentTimeMs - prevTimeMs < 10)
-        {
-            //printf("Frame only took %dms, spin locking for rest of the time\n", (currentTime - prevTime));
-            //while (currentTime - prevTime < 16)
-            {
-                //LOL
-                //currentTime = SDL_GetTicks();
-            }
-            SDL_Delay((16 - (int)(currentTimeMs - prevTimeMs)) + (int)Global::fpsSleepBias);
-            //printf("Sleeping for %dms\n", (16 - (int)(currentTimeMs - prevTimeMs)) + (int)Global::fpsSleepBias);
-        }
-        prevTimeMs = currentTimeMs;
-
-        if (currentTimeMs/1000 > prevSecond)
-        {
-            //printf("fps = %d, bias = %f\n", framesThisSecond, Global::fpsSleepBias);
-
-            Global::fpsSleepBias += 0.24f*(framesThisSecond - 60);
-
-            if (Global::fpsSleepBias < 0.0f)
-            {
-                Global::fpsSleepBias = 0.0f;
-            }
-
-            framesThisSecond = 0;
-            prevSecond += 1.0f;
-        }
+        Global::limitTo60FPS();
 
         SDL_Event event;
         while (SDL_PollEvent(&event))
@@ -152,6 +147,16 @@ int main()
         }
 
         Input::poll();
+
+        int windowFlags = SDL_GetWindowFlags(window);
+        // This prevents a strange memory leak that happens somewhere in SDL2.dll.
+        // When the game is minimized, memory climbs steadily. Can prevent by not calling
+        // any SDL rendering functions when minimized. This also "pauses" the game since
+        // the game logic is skipped.
+        if (windowFlags & SDL_WINDOW_MINIMIZED)
+        {
+            continue;
+        }
 
         SDL_SetRenderTarget(Global::sdlRenderer, mainRenderTexture); //render to the GBA sized texture
         SDL_RenderClear(Global::sdlRenderer);
@@ -205,7 +210,7 @@ int main()
             SDL_RenderFillRect(Global::sdlRenderer, &rectEntireScreen);
         }
 
-        SDL_SetRenderTarget(Global::sdlRenderer, nullptr); //render to main window
+        SDL_SetRenderTarget(Global::sdlRenderer, nullptr); //render the GBA sized texture to the main window
 
         bool integerScaling = true;
 
@@ -260,13 +265,20 @@ int main()
             }
         }
 
+        //SDL_RenderCopy(Global::sdlRenderer, renderedFontTexture, NULL, &textRect);
+        //WindowBox::render(0, 0, 10, 15);
+        //Text::renderText("Path of Radiance Ironman", Font::Border, SDL_Color{255, 255, 255, 255}, 0, 0, Alignment::Left, 0);
+
         SDL_RenderPresent(Global::sdlRenderer);
 
         animIndex++;
     }
 
+    TTF_CloseFont(fontConsolas);
+
     SDL_DestroyRenderer(Global::sdlRenderer);
     SDL_DestroyWindow(window);
+    TTF_Quit();
     Mix_CloseAudio();
     //Mix_FreeChunk(jumpEffect);
     SDL_Quit();
@@ -279,4 +291,48 @@ void Global::transitionToNewState(GameState newState, int transitionTime)
     Global::transitionState = newState;
     Global::transitionTimer = transitionTime;
     Global::transitionTimerMax = transitionTime;
+}
+
+void Global::limitTo60FPS()
+{
+    std::chrono::time_point<std::chrono::steady_clock> currentFrameTimestamp = std::chrono::high_resolution_clock::now();
+
+    long long frameTimeMicro = std::chrono::duration_cast<std::chrono::microseconds>(currentFrameTimestamp - Global::previousFrameTimestamp).count();
+
+    if (frameTimeMicro < 16666)
+    {
+        int dtFrameNeedsToTakeMicro = 16666;
+
+        bool slept = false;
+
+        // First, see if we can sleep some of the time to avoid cpu spinning.
+        const int sleepBufferMicro = 2000; //sleep will hopefully never take longer than this to return (2 milliseconds)
+        int sleepTimeMicro = (int)((int)dtFrameNeedsToTakeMicro - (int)frameTimeMicro) - sleepBufferMicro;
+        if (sleepTimeMicro >= 1)
+        {
+            usleep(sleepTimeMicro);
+            slept = true;
+        }
+
+        bool spinned = false;
+        
+        // Next, spin the CPU to precisely wait the correct amount of time.
+        currentFrameTimestamp = std::chrono::high_resolution_clock::now();
+        while (std::chrono::duration_cast<std::chrono::microseconds>(currentFrameTimestamp - Global::previousFrameTimestamp).count() < dtFrameNeedsToTakeMicro)
+        {
+            currentFrameTimestamp = std::chrono::high_resolution_clock::now();
+            spinned = true;
+        }
+
+        if (slept && !spinned)
+        {
+            printf("slept for too long! (%lld microseconds too much)\n", (std::chrono::duration_cast<std::chrono::microseconds>(currentFrameTimestamp - Global::previousFrameTimestamp).count()) - dtFrameNeedsToTakeMicro);
+        }
+        else if (!slept && !spinned)
+        {
+            //printf("frame has already taken too long!\n");
+        }
+    }
+
+    Global::previousFrameTimestamp = currentFrameTimestamp;
 }

@@ -137,6 +137,8 @@ void Map::loadFresh(int mapId)
     Global::mapId = mapId;
     std::vector<std::string> mapFile = Util::readFile("res/Maps/Chapter" + std::to_string(mapId) + ".map");
 
+    turnCount = 1;
+
     int lineNum = 0;
 
     background = IMG_LoadTexture(Global::sdlRenderer, mapFile[lineNum].c_str()); lineNum++;
@@ -156,8 +158,19 @@ void Map::loadFresh(int mapId)
         std::vector<std::string> rowTiles = Util::split(mapFile[lineNum], ' '); lineNum++;
         for (int x = 0; x < tilesWidth; x++)
         {
+            MapTileType tileType = MapTileType::NoPass;
+
             char tileChar = (rowTiles[x])[0];
-            MapTile tile((MapTileType)tileChar, "test" + std::to_string(tileChar));
+            if (tileChar >= 48 && tileChar <= 57)
+            {
+                tileType = (MapTileType)(tileChar - 48);
+            }
+            else if (tileChar >= 65 && tileChar <= 90)
+            {
+                tileType = (MapTileType)((tileChar - 65) + 10);
+            }
+
+            MapTile tile(tileType);
             tiles.push_back(tile);
         }
     }
@@ -259,8 +272,9 @@ void Map::loadFresh(int mapId)
         enemy->weaponRank[Staff] = std::stoi(line[28]);
 
         enemy->behavior = (Behavior)std::stoi(line[29]);
-        enemy->groupId  =           std::stoi(line[30]);
-        enemy->isBoss   =     (bool)std::stoi(line[31]);
+        enemy->roamTurn =           std::stoi(line[30]);
+        enemy->groupId  =           std::stoi(line[31]);
+        enemy->isBoss   =     (bool)std::stoi(line[32]);
 
         unitsEnemy.push_back(enemy);
     }
@@ -270,7 +284,7 @@ void Map::loadFresh(int mapId)
 
 void Map::step()
 {
-    updateCamera();
+    //updateCamera();
 
     SDL_Rect rect;
     rect.x = viewportPixelX;
@@ -287,6 +301,8 @@ void Map::step()
     {
         enemyPhase();
     }
+
+    updateCamera();
 }
 
 void Map::playerPhase()
@@ -509,6 +525,8 @@ void Map::playerPhase()
             cursorX = selectedUnit->tileX;
             cursorY = selectedUnit->tileY;
 
+            Audio::play(Beep1, 0);
+
             selectedUnit = nullptr;
             resetNeutralHudDescriptions();
             mapState = Neutral;
@@ -527,6 +545,7 @@ void Map::playerPhase()
                     createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
                     calculateMenuChoices();
                     mapState = UnitMenu;
+                    Audio::play(Beep3, 0);
                 }
                 else
                 {
@@ -539,7 +558,7 @@ void Map::playerPhase()
                         Djikstra::generateWalkingPath(selectedUnit, cursorX, cursorY, &walkingPath);
 
                         //start walking
-                        walkingTimer = (int)walkingPath.size()*8 - 9; //8 frames per tile
+                        walkingTimer = (int)walkingPath.size()*80 - 81; //80 frames per tile
 
                         mapState = WaitingForUnitToMove;
                     }
@@ -556,13 +575,13 @@ void Map::playerPhase()
 
     case WaitingForUnitToMove:
     {
-        int id1 = (walkingTimer)/8;
+        int id1 = (walkingTimer)/80;
         int id2 = id1 + 1;
 
         SDL_Point p1 = walkingPath[id1];
         SDL_Point p2 = walkingPath[id2];
 
-        float perc = (walkingTimer % 8)/8.0f;
+        float perc = (walkingTimer % 80)/80.0f;
 
         float tweenX = p1.x + perc*(p2.x - p1.x);
         float tweenY = p1.y + perc*(p2.y - p1.y);
@@ -594,7 +613,16 @@ void Map::playerPhase()
         renderUnits(&unitsPlayer,  0, selectedUnit);
         selectedUnit->render(selectedUnit->x, selectedUnit->y, selectedUnit->spriteIndex, viewportPixelX, viewportPixelY);
 
-        walkingTimer--;
+        if (Input::pressingA() || Input::pressingB())
+        {
+            walkingTimer-=16;
+        }
+        else
+        {
+            // TODO check config for battle speed.
+            walkingTimer-=8;
+        }
+
         if (walkingTimer <= 0)
         {
             selectedUnit->tileX = cursorX;
@@ -605,6 +633,7 @@ void Map::playerPhase()
             createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
             calculateMenuChoices();
             mapState = UnitMenu;
+            Audio::play(Beep3, 0);
         }
         break;
     }
@@ -618,6 +647,7 @@ void Map::playerPhase()
 
         if (Input::pressedUp())
         {
+            Audio::play(Beep5, 0);
             menuIdx--;
             if (menuIdx < 0)
             {
@@ -627,32 +657,37 @@ void Map::playerPhase()
         else if (Input::pressedDown())
         {
             menuIdx = (menuIdx + 1) % menuChoices.size();
+            Audio::play(Beep5, 0);
         }
 
         if (Input::pressedA())
         {
+            Audio::play(Beep4, 0);
             executeMenuChoice();
         }
         else if (Input::pressedB())
         {
             if (selectedUnitCanGoBack)
             {
-                selectedUnit->tileX = selectedUnitOriginalTileX;
-                selectedUnit->tileY = selectedUnitOriginalTileY;
-
                 cursorX = selectedUnit->tileX;
                 cursorY = selectedUnit->tileY;
+
+                selectedUnit->tileX = selectedUnitOriginalTileX;
+                selectedUnit->tileY = selectedUnitOriginalTileY;
 
                 clearPreviewTiles();
                 clearPreviewTilesEnemyAll();
 
-                selectedUnit = nullptr;
-                resetNeutralHudDescriptions();
-                mapState = Neutral;
+                Audio::play(Beep1, 0);
+
+                walkingPath.clear();
+                Djikstra::calculatePreviewTiles(selectedUnit, &previewTilesBlue, &previewTilesRed, &unitsPlayer, &unitsEnemy);
+                mapState = MovingUnit;
             }
             else
             {
                 //play some sound
+                Audio::play(BeepDeny, 0);
             }
         }
 
@@ -670,6 +705,7 @@ void Map::playerPhase()
 
         if (Input::pressedUp())
         {
+            Audio::play(Beep5, 0);
             itemIdx--;
             if (itemIdx < 0)
             {
@@ -678,11 +714,14 @@ void Map::playerPhase()
         }
         else if (Input::pressedDown())
         {
+            Audio::play(Beep5, 0);
             itemIdx = (itemIdx + 1) % selectedUnit->items.size();
         }
 
         if (Input::pressedA())
         {
+            Audio::play(Beep4, 0);
+
             itemEditIdx = 0;
             itemEditChoices.clear();
 
@@ -702,6 +741,7 @@ void Map::playerPhase()
         }
         else if (Input::pressedB())
         {
+            Audio::play(Beep1, 0);
             clearPreviewTiles();
             createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
             calculateMenuChoices();
@@ -722,6 +762,7 @@ void Map::playerPhase()
 
         if (Input::pressedUp())
         {
+            Audio::play(Beep5, 0);
             itemEditIdx--;
             if (itemEditIdx < 0)
             {
@@ -730,6 +771,7 @@ void Map::playerPhase()
         }
         else if (Input::pressedDown())
         {
+            Audio::play(Beep5, 0);
             itemEditIdx = (itemEditIdx + 1) % itemEditChoices.size();
         }
 
@@ -741,6 +783,8 @@ void Map::playerPhase()
 
         if (Input::pressedA())
         {
+            Audio::play(Beep4, 0);
+
             if (itemEditChoices[itemEditIdx] == "Equip")
             {
                 Item itemAtIdx = selectedUnit->items[itemIdx];
@@ -793,6 +837,7 @@ void Map::playerPhase()
         }
         else if (Input::pressedB())
         {
+            Audio::play(Beep1, 0);
             mapState = UnitMenuItem;
         }
 
@@ -815,6 +860,8 @@ void Map::playerPhase()
             Unit* enemyOnCursor = getUnitAtTile(cursorX, cursorY, &unitsEnemy);
             if (enemyOnCursor != nullptr)
             {
+                Audio::play(Beep4, 0);
+
                 defendingEnemy = enemyOnCursor;
                 attackingTimer = -10;
 
@@ -828,6 +875,7 @@ void Map::playerPhase()
         }
         else if (Input::pressedB())
         {
+            Audio::play(Beep1, 0);
             clearPreviewTiles();
             createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
             calculateMenuChoices();
@@ -1095,6 +1143,8 @@ void Map::playerPhase()
             Unit* unitOnCursor = getUnitAtTile(cursorX, cursorY, &unitsPlayer);
             if (unitOnCursor != nullptr)
             {
+                Audio::play(Beep4, 0);
+
                 int xDiff = cursorX - selectedUnit->tileX;
                 int yDiff = cursorY - selectedUnit->tileY;
 
@@ -1107,6 +1157,7 @@ void Map::playerPhase()
         }
         else if (Input::pressedB())
         {
+            Audio::play(Beep1, 0);
             clearPreviewTiles();
             createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
             calculateMenuChoices();
@@ -1143,6 +1194,8 @@ void Map::playerPhase()
 
         if (Input::pressedA())
         {
+            Audio::play(Beep4, 0);
+
             if (tradeIsLocked)
             {
                 Item itemLeft(None);
@@ -1206,10 +1259,12 @@ void Map::playerPhase()
         {
             if (tradeIsLocked)
             {
+                Audio::play(Beep1, 0);
                 tradeIsLocked = false;
             }
             else
             {
+                Audio::play(Beep1, 0);
                 clearPreviewTiles();
                 createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
                 calculateMenuChoices();
@@ -1218,6 +1273,8 @@ void Map::playerPhase()
         }
         else if (Input::pressedUp())
         {
+            Audio::play(Beep5, 0);
+
             int* idx = &tradeLeftIdx;
 
             if ((!tradeSideLeft && !tradeIsLocked) ||
@@ -1233,6 +1290,8 @@ void Map::playerPhase()
         }
         else if (Input::pressedDown())
         {
+            Audio::play(Beep5, 0);
+
             std::vector<Item>* items = &selectedUnit->items;
             int* idx = &tradeLeftIdx;
 
@@ -1252,6 +1311,7 @@ void Map::playerPhase()
         {
             if (!tradeIsLocked && !tradeSideLeft)
             {
+                Audio::play(Beep8, 0);
                 tradeSideLeft = true;
                 tradeLeftIdx = 0;
             }
@@ -1260,6 +1320,7 @@ void Map::playerPhase()
         {
             if (!tradeIsLocked && tradeSideLeft)
             {
+                Audio::play(Beep8, 0);
                 tradeSideLeft = false;
                 tradeRightIdx = 0;
             }
@@ -1279,6 +1340,8 @@ void Map::playerPhase()
 
         if (Input::pressedUp())
         {
+            Audio::play(Beep5, 0);
+
             staffIdx--;
             if (staffIdx < 0)
             {
@@ -1287,11 +1350,15 @@ void Map::playerPhase()
         }
         else if (Input::pressedDown())
         {
+            Audio::play(Beep5, 0);
+
             staffIdx = (staffIdx + 1) % staffChoices.size();
         }
 
         if (Input::pressedA())
         {
+            Audio::play(Beep4, 0);
+
             Item* staff = staffChoices[staffIdx];
             std::unordered_set<int> ranges = staff->getStaffRange();
             clearPreviewTiles();
@@ -1313,6 +1380,7 @@ void Map::playerPhase()
         }
         else if (Input::pressedB())
         {
+            Audio::play(Beep1, 0);
             clearPreviewTiles();
             createAttackPreviewTiles(selectedUnit, selectedUnit->getEquipWeaponAttackRange(), &previewTilesRed);
             calculateMenuChoices();
@@ -1336,6 +1404,8 @@ void Map::playerPhase()
             Unit* friendAtCursor = getUnitAtTile(cursorX, cursorY, &unitsPlayer);
             if (friendAtCursor != nullptr)
             {
+                Audio::play(Beep4, 0);
+
                 //todo: check if friendAtCursor is in a green tile
                 Item* staff = staffChoices[staffIdx];
                 switch (staff->id)
@@ -1368,6 +1438,7 @@ void Map::playerPhase()
         }
         else if (Input::pressedB())
         {
+            Audio::play(Beep1, 0);
             clearPreviewTiles();
             mapState = UnitMenuStaffSelect;
         }
@@ -1424,7 +1495,7 @@ void Map::playerPhase()
     }
     }
 
-    updateCamera();
+    //updateCamera();
 }
 
 void Map::enemyPhase()
@@ -1448,6 +1519,12 @@ void Map::enemyPhase()
         }
 
         Unit* enemy = unitsEnemy[enemyIdx];
+
+        // Behavior switches to roam on roam turn
+        if (enemy->roamTurn == turnCount)
+        {
+            enemy->behavior = Behavior::Roam;
+        }
 
         long long maxScore = 0;
 
@@ -1570,7 +1647,7 @@ void Map::enemyPhase()
                     Djikstra::generateWalkingPath(enemy, enemyTileToAttackFrom.x, enemyTileToAttackFrom.y, &enemyWalkingPath);
 
                     //start walking
-                    enemyWalkingTimer = (int)enemyWalkingPath.size()*8 - 9; //8 frames per tile
+                    enemyWalkingTimer = (int)enemyWalkingPath.size()*80 - 81; //80 frames per tile
 
                     mapState = EnemyPhaseWaitingForUnitToMove;
                     enemyStateAfterCurrentState = EnemyPhaseWaitingForAttackToFinish;
@@ -1681,7 +1758,7 @@ void Map::enemyPhase()
                         else
                         {
                             //start walking
-                            enemyWalkingTimer = (int)enemyWalkingPath.size()*8 - 9; //8 frames per tile
+                            enemyWalkingTimer = (int)enemyWalkingPath.size()*80 - 81; //80 frames per tile
 
                             mapState = EnemyPhaseWaitingForUnitToMove;
                             enemyStateAfterCurrentState = EnemyPhaseCalculating;
@@ -1773,7 +1850,7 @@ void Map::enemyPhase()
                 // Walk first, then battle.
                 if (!isAtFinalSpot)
                 {
-                    enemyWalkingTimer = (int)enemyWalkingPath.size()*8 - 9; //8 frames per tile
+                    enemyWalkingTimer = (int)enemyWalkingPath.size()*80 - 81; //80 frames per tile
 
                     mapState = EnemyPhaseWaitingForUnitToMove;
                     enemyStateAfterCurrentState = EnemyPhaseWaitingForAttackToFinish;
@@ -1790,7 +1867,7 @@ void Map::enemyPhase()
                 // No one to attack, start walking.
                 if (!isAtFinalSpot)
                 {
-                    enemyWalkingTimer = (int)enemyWalkingPath.size()*8 - 9; //8 frames per tile
+                    enemyWalkingTimer = (int)enemyWalkingPath.size()*80 - 81; //80 frames per tile
 
                     mapState = EnemyPhaseWaitingForUnitToMove;
                     enemyStateAfterCurrentState = EnemyPhaseCalculating;
@@ -1802,7 +1879,8 @@ void Map::enemyPhase()
                 }
             }
         }
-        else if (enemy->behavior == Behavior::WaitUntilEnemyInRange)
+        else if (enemy->behavior == Behavior::WaitUntilEnemyInRange ||
+                 enemy->behavior == Behavior::AttackEnemyInRange)
         {
             std::vector<SDL_Point> walkableTiles;
             Djikstra::calculateBlueTiles(enemy, &walkableTiles, &unitsEnemy, &unitsPlayer);
@@ -1865,14 +1943,17 @@ void Map::enemyPhase()
                     Djikstra::generateWalkingPath(enemy, enemyTileToAttackFrom.x, enemyTileToAttackFrom.y, &enemyWalkingPath);
 
                     // Start walking
-                    enemyWalkingTimer = (int)enemyWalkingPath.size()*8 - 9; //8 frames per tile
+                    enemyWalkingTimer = (int)enemyWalkingPath.size()*80 - 81; //80 frames per tile
 
                     mapState = EnemyPhaseWaitingForUnitToMove;
                     enemyStateAfterCurrentState = EnemyPhaseWaitingForAttackToFinish;
                 }
 
-                // Change our behavior to roam
-                enemy->behavior = Behavior::Roam;
+                if (enemy->behavior == Behavior::WaitUntilEnemyInRange)
+                {
+                    // Change our behavior to roam
+                    enemy->behavior = Behavior::Roam;
+                }
             }
             else // No one in our range
             {
@@ -1894,7 +1975,7 @@ void Map::enemyPhase()
     {
         Unit* movingUnit = unitsEnemy[enemyIdx];
 
-        int id1 = (enemyWalkingTimer)/8;
+        int id1 = (enemyWalkingTimer)/80;
         int id2 = id1 + 1;
 
         SDL_Point p1 = enemyWalkingPath[0];
@@ -1918,7 +1999,7 @@ void Map::enemyPhase()
             p2 = enemyWalkingPath[id2];
         }
 
-        float perc = (enemyWalkingTimer % 8)/8.0f;
+        float perc = (enemyWalkingTimer % 80)/80.0f;
 
         float tweenX = p1.x + perc*(p2.x - p1.x);
         float tweenY = p1.y + perc*(p2.y - p1.y);
@@ -1943,7 +2024,7 @@ void Map::enemyPhase()
 
         cursorX = enemyWalkingPath[0].x;
         cursorY = enemyWalkingPath[0].y;
-        updateCamera();
+        //updateCamera();
 
         renderUnits(&unitsPlayer, 0, nullptr);
 
@@ -1954,7 +2035,16 @@ void Map::enemyPhase()
         renderUnits(&unitsEnemy, 6, movingUnit);
         movingUnit->render(movingUnit->x, movingUnit->y, movingUnit->spriteIndex, viewportPixelX, viewportPixelY);
 
-        enemyWalkingTimer--;
+        if (Input::pressingA() || Input::pressingB())
+        {
+            enemyWalkingTimer-=16;
+        }
+        else
+        {
+            // TODO check config for battle speed.
+            enemyWalkingTimer-=8;
+        }
+
         if (enemyWalkingTimer <= 0)
         {
             enemyAttackingTimer = -30;
@@ -1994,7 +2084,7 @@ void Map::enemyPhase()
 
         cursorX = defendingPlayer->tileX;
         cursorY = defendingPlayer->tileY;
-        updateCamera();
+        //updateCamera();
 
         renderUnits(&unitsPlayer, 0, defendingPlayer);
         renderUnits(&unitsEnemy,  6, attackingUnit);
@@ -2249,6 +2339,7 @@ void Map::enemyPhase()
         {
             isPhaseEnemy  = false;
             isPhasePlayer = true;
+            turnCount++;
             clearPreviewTiles();
             clearPreviewTilesEnemyAll();
             mapState = Neutral;
@@ -2500,7 +2591,7 @@ MapTile Map::getTile(int x, int y, std::vector<Unit*>* unpassableUnits)
 {
     if (x < 0 || y < 0 || x >= tilesWidth || y >= tilesHeight || (getUnitAtTile(x, y, unpassableUnits) != nullptr))
     {
-        return MapTile(MapTileType::NoPass, "OutOfBounds");
+        return MapTile(MapTileType::NoPass);
     }
 
     return tiles[x + tilesWidth*y];

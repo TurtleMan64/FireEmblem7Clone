@@ -15,6 +15,7 @@ void Audio::init()
     loadSFX("res/Audio/SFX/Beep5.wav");
     loadSFX("res/Audio/SFX/Beep6.wav");
     loadSFX("res/Audio/SFX/Beep7.wav");
+    loadSFX("res/Audio/SFX/Beep8.wav");
     loadSFX("res/Audio/SFX/BeepClose.wav");
     loadSFX("res/Audio/SFX/BeepDeny.wav");
     loadSFX("res/Audio/SFX/BeepOpen.wav");
